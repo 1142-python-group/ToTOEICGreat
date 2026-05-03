@@ -5,8 +5,8 @@ import os
 load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_PUBLISHABLE_KEY = os.getenv("SUPABASE_PUBLISHABLE_KEY")
-TEST_EMAIL = os.getenv("TEST_EMAIL")
-TEST_PASSWORD = os.getenv("TEST_PASSWORD")
+TEST_USER_EMAIL = os.getenv("TEST_USER2_EMAIL")
+TEST_USER_PASSWORD = os.getenv("TEST_USER2_PASSWORD")
 
 # 請替換成你專案的真實資料
 
@@ -17,8 +17,8 @@ def get_supabase_token():
         "Content-Type": "application/json"
     }
     data = {
-        "email": TEST_EMAIL,
-        "password": TEST_PASSWORD
+        "email": TEST_USER_EMAIL,
+        "password": TEST_USER_PASSWORD
     }
     
     response = httpx.post(url, headers=headers, json=data)

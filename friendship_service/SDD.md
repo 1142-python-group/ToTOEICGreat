@@ -63,7 +63,16 @@
     );
     ```
 
-3. **狀態驗證 (Check Constraint):**
+3. **查詢效能優化 (B-tree Indexes):**
+
+    針對頻繁的過濾欄位建立索引。
+
+    ```sql
+    CREATE INDEX idx_friendships_requester_id ON friendships(requester_id);
+    CREATE INDEX idx_friendships_addressee_id ON friendships(addressee_id);
+    ```
+
+4. **狀態驗證 (Check Constraint):**
 
     ```sql
     ALTER TABLE friendships ADD CONSTRAINT check_status_enum CHECK (status IN ('pending', 'accepted'));
@@ -77,7 +86,19 @@
 
 - **SELECT:** 只能看到 `requester_id` 或 `addressee_id` 為自己 UUID 的紀錄。
 - **INSERT:** 只能新增 `requester_id` 為自己 UUID 的紀錄（不能偽造他人發送邀請）。
-- **UPDATE/DELETE:** 只能修改/刪除 `requester_id` 或 `addressee_id` 為自己 UUID 的紀錄。
+- **UPDATE:** 只有接收者 (`addressee_id`) 才能將狀態更新為 `accepted`，且當前使用者必須是接收者。
+- **DELETE:** 只要是關係中的任一方（`requester_id` 或 `addressee_id` 為自己），皆可刪除紀錄（撤回邀請或解除好友）。
+
+---
+
+## 4. 基礎設施依賴 (Infrastructure Dependency)
+
+### 4.1 使用者資料同步 (Auth Sync)
+
+本系統引用 `public.users(id)`。必須確保 Supabase `auth.users` 與 `public.users` 之間已建立同步 Trigger：
+
+- **Trigger:** 當 `auth.users` 有新紀錄時，自動 `INSERT` 到 `public.users`。
+- **一致性:** 確保 `friendships` 的外鍵關聯不會失效。
 
 ---
 
