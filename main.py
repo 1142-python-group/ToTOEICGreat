@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from account_service.authen import app as auth_app
 from friendship_service.friends import router as friendship_router
+from record_services.records import router as record_router
 import uvicorn
 
 app = FastAPI(title="ToToeicGreat API Server")
@@ -10,6 +11,9 @@ app.include_router(auth_app.router)
 
 # 註冊好友系統路由
 app.include_router(friendship_router)
+
+# 註冊測驗與紀錄系統路由
+app.include_router(record_router)
 
 @app.get("/")
 async def root():
