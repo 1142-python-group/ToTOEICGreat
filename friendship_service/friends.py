@@ -23,7 +23,8 @@ router = APIRouter(prefix="/api/v1/friends", tags=["Friendship"])
 # --- Pydantic Models ---
 
 class FriendRequestCreate(BaseModel):
-    target_user_id: UUID
+    target_user_id: Optional[UUID] = None
+    friend_code: Optional[str] = None
 
 class FriendRequestAction(BaseModel):
     action: str = Field(..., pattern="^(accept|reject)$")
@@ -40,17 +41,40 @@ class FriendListResponse(BaseModel):
 
 # --- API Endpoints ---
 
+@router.get("/my-code")
+async def get_my_friend_code(user_id: str = Depends(verify_token)):
+    """取得當前使用者的好友代碼"""
+    res = supabase.table("users").select("friend_code").eq("id", user_id).single().execute()
+    if not res.data:
+        raise HTTPException(status_code=404, detail="找不到使用者資料")
+    return {"friend_code": res.data["friend_code"]}
+
 @router.post("/requests", status_code=status.HTTP_201_CREATED)
 async def send_friend_request(
     request: FriendRequestCreate, 
     user_id: str = Depends(verify_token)
 ):
     """發送好友邀請"""
+    target_id = request.target_user_id
+    
+    # 如果提供了 friend_code，則優先解析為 UUID
+    if request.friend_code:
+        user_res = supabase.table("users").select("id").eq("friend_code", request.friend_code).execute()
+        if not user_res.data:
+            raise HTTPException(status_code=404, detail="找不到對應的好友代碼")
+        target_id = user_res.data[0]["id"]
+    
+    if not target_id:
+        raise HTTPException(status_code=400, detail="必須提供 target_user_id 或 friend_code")
+        
+    if str(target_id) == str(user_id):
+        raise HTTPException(status_code=400, detail="不能給自己發送好友邀請")
+
     try:
         # 強制轉為字串避免 UUID 物件在 SDK 中產生不可預期的行為
         res = supabase.table("friendships").insert({
             "requester_id": str(user_id),
-            "addressee_id": str(request.target_user_id),
+            "addressee_id": str(target_id),
             "status": "pending"
         }).execute()
         

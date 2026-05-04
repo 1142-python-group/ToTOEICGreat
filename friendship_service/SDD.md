@@ -29,7 +29,14 @@
 
 ### 3.1 關聯表 (Tables)
 
-好友關係本質上是「有向圖 (Directed Graph)」轉換為「無向圖 (Undirected Graph)」的過程。我們採用單一表 `friendships` 搭配 `status` 欄位來紀錄關係。
+#### Table: `public.users` (由 Auth 模組同步，此處僅列出關鍵欄位)
+
+| 欄位名稱 | 型別 | 限制條件 (Constraints) | 說明 |
+| :--- | :--- | :--- | :--- |
+| `id` | `UUID` | `PRIMARY KEY` | 使用者唯一識別碼 |
+| `email` | `TEXT` | `UNIQUE` | 電子郵件 |
+| `username` | `TEXT` | | 使用者名稱 |
+| `friend_code` | `VARCHAR(10)` | `UNIQUE, NOT NULL` | 短好友代碼 (例如: `ABC1234`) |
 
 #### Table: `friendships`
 
@@ -124,21 +131,34 @@
 
     ```json
     {
-      "target_user_id": "uuid-string"
+      "target_user_id": "uuid-string (optional)",
+      "friend_code": "string (optional)"
     }
     ```
 
 - **Logic:**
-    1. 檢查 `target_user_id` 是否存在於 `users` 表。
-    2. 捕捉 Unique Constraint 錯誤（若已存在 `pending` 或 `accepted` 關係，回傳 `409 Conflict`）。
-    3. 寫入 `friendships`，狀態預設 `pending`。
+    1. 若提供 `friend_code`，先查詢 `users` 表取得對應的 `id`。
+    2. 檢查目標使用者是否存在。
+    3. 捕捉 Unique Constraint 錯誤（若已存在 `pending` 或 `accepted` 關係，回傳 `409 Conflict`）。
+    4. 寫入 `friendships`，狀態預設 `pending`。
 - **Response (201 Created):**
 
     ```json
     { "message": "Friend request sent successfully", "friendship_id": "uuid-string" }
     ```
 
-### 5.2 處理好友邀請 (接受/拒絕)
+### 5.2 查詢我的好友代碼
+
+- **Endpoint:** `GET /api/v1/friends/my-code`
+- **Logic:**
+    1. 查詢 `public.users` 中當前使用者的 `friend_code`。
+- **Response (200 OK):**
+
+    ```json
+    { "friend_code": "ABC1234" }
+    ```
+
+### 5.3 處理好友邀請 (接受/拒絕)
 
 - **Endpoint:** `PATCH /api/v1/friends/requests/{friendship_id}`
 - **Request Body:**
