@@ -11,11 +11,19 @@ const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY)
 // Auth 相關函式，給 app.js 呼叫
 // ════════════════════════════════════════════════
 // 註冊
-async function authSignUp(email, password) {
+async function authSignUp(email, password, username) {
   // 只需要呼叫這一行
   // 因為資料庫的 Trigger (on_auth_user_created) 會在你呼叫完這行的瞬間，
   // 自動在背景幫你把資料填入 public.users 表。
-  const { data, error } = await supabaseClient.auth.signUp({ email, password })
+  const { data, error } = await supabaseClient.auth.signUp({ 
+    email, 
+    password,
+    options: {
+      data: {
+        username: username
+      }
+    }
+  })
   
   if (error) throw new Error(error.message)
   
