@@ -3,7 +3,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 from uuid import UUID
 from datetime import datetime
-from account_service.authen import verify_token
+from routers.account_service.authen import verify_token
 import os
 from supabase import create_client, Client
 
@@ -35,6 +35,7 @@ class FriendshipResponse(BaseModel):
     friend_username: Optional[str]
     status: str
     created_at: datetime
+    is_requester: bool = False
 
 class FriendListResponse(BaseModel):
     data: List[FriendshipResponse]
@@ -150,7 +151,8 @@ async def get_friends_list(
             "friend_user_id": friend_id,
             "friend_username": friend_username,
             "status": item["status"],
-            "created_at": item["created_at"]
+            "created_at": item["created_at"],
+            "is_requester": is_requester
         })
         
     return {"data": data}
