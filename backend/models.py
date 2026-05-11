@@ -3,7 +3,7 @@ from typing import Optional
 
 # ── 題目相關 ──────────────────────────────────
 class Question(BaseModel):
-    id: int
+    id: str
     tag: str                    # 例如：「單字 — 動詞」
     text: str                   # 題目文字
     options: list[str]          # ["A. ...", "B. ...", "C. ...", "D. ..."]
@@ -17,12 +17,12 @@ class QuizSession(BaseModel):
 # ── 交卷相關 ──────────────────────────────────
 class AnswerSubmit(BaseModel):
     session_id: str
-    answers: dict[int, int]          # { 題目id: 選項index(0-3) }
-    time_spent_per_q: dict[int, int] # { 題目id: 花費秒數 }
+    answers: dict[str, int]          # { 題目id: 選項index(0-3) }
+    time_spent_per_q: dict[str, int] # { 題目id: 花費秒數 }
 
 # ── 成績 / 解析 ───────────────────────────────
 class QuestionResult(BaseModel):
-    question_id: int
+    question_id: str
     tag: str
     question_text: str
     options: list[str]

@@ -1,6 +1,6 @@
 """
 多多益善 — FastAPI 後端主程式
-配合實際 CSV 欄位名稱：
+配合 Supabase 資料庫欄位名稱：
   question_id, question_text, option_a~d,
   skill_tag, correct_answer(a/b/c/d),
   explanation, translation, vocabulary
@@ -8,10 +8,10 @@
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import Optional
-import pandas as pd
+import random
 import uuid
+from database import supabase
+from models import Question, QuizSession, AnswerSubmit, QuestionResult, ExamResult, UserStats
 
 app = FastAPI(title="多多益善 API", version="1.0.0")
 
@@ -28,89 +28,29 @@ app.add_middleware(
 
 def letter_to_index(letter: str) -> int:
     """
-    CSV 的 correct_answer 欄位是 'a'/'b'/'c'/'d'（大小寫都接受）
+    Supabase 的 correct_answer 欄位是 'A'/'B'/'C'/'D'
     轉成前端需要的 0/1/2/3
     """
-    mapping = {"a": 0, "b": 1, "c": 2, "d": 3}
-    result = mapping.get(str(letter).strip().lower())
+    mapping = {"A": 0, "B": 1, "C": 2, "D": 3}
+    result = mapping.get(str(letter).strip().upper())
     if result is None:
-        raise ValueError(f"無效的答案欄位值：'{letter}'，應為 a/b/c/d")
+        raise ValueError(f"無效的答案欄位值：'{letter}'，應為 A/B/C/D")
     return result
 
 
 # ════════════════════════════════════════════════
-# 讀取 CSV
+# 讀取題庫從 Supabase
 # ════════════════════════════════════════════════
 
 try:
-    df = pd.read_csv("questions.csv", encoding="utf-8")
+    # 從 Supabase 讀取所有題目
+    res = supabase.table("questions").select("*").execute()
+    questions_data = res.data
+    print(f"✅ 題庫載入成功：共 {len(questions_data)} 道題目")
 
-    required_cols = [
-        "question_id", "question_text",
-        "option_a", "option_b", "option_c", "option_d",
-        "skill_tag", "correct_answer",
-    ]
-    missing = [c for c in required_cols if c not in df.columns]
-    if missing:
-        raise ValueError(f"CSV 缺少欄位：{missing}")
-
-    print(f"✅ 題庫載入成功：共 {len(df)} 道題目")
-
-except FileNotFoundError:
-    print("⚠️  找不到 questions.csv，請放在 backend/ 資料夾下")
-    df = pd.DataFrame()
-except ValueError as e:
-    print(f"⚠️  CSV 格式錯誤：{e}")
-    df = pd.DataFrame()
-
-
-# ════════════════════════════════════════════════
-# Pydantic 模型
-# ════════════════════════════════════════════════
-
-class Question(BaseModel):
-    id: str
-    tag: str
-    text: str
-    options: list[str]
-
-class QuizSession(BaseModel):
-    session_id: str
-    questions: list[Question]
-    time_limit_seconds: int
-
-class AnswerSubmit(BaseModel):
-    session_id: str
-    answers: dict[str, int]          # { "R001": 2, "R002": 0, ... }
-    time_spent_per_q: dict[str, int] # { "R001": 45, ... }
-
-class QuestionResult(BaseModel):
-    question_id: str
-    tag: str
-    question_text: str
-    options: list[str]
-    correct_index: int
-    user_answer: Optional[int]
-    is_correct: bool
-    ai_analysis: str
-    translation: str
-    vocab: list[str]
-
-class ExamResult(BaseModel):
-    score: int
-    correct_count: int
-    wrong_count: int
-    unanswered_count: int
-    total_time_seconds: int
-    question_results: list[QuestionResult]
-
-class UserStats(BaseModel):
-    username: str
-    total_questions: int
-    estimated_score: int
-    avg_time_per_q: float
-    score_history: list[dict]
-    radar_data: list[dict]
+except Exception as e:
+    print(f"⚠️  題庫載入失敗：{e}")
+    questions_data = []
 
 
 # ════════════════════════════════════════════════
@@ -128,19 +68,19 @@ exam_sessions: dict = {}
 def root():
     return {
         "message": "多多益善 API 正常運作！",
-        "total_questions": len(df),
+        "total_questions": len(questions_data),
     }
 
 
 @app.get("/api/quiz/start", response_model=QuizSession)
 def start_quiz(count: int = 5):
-    """從 CSV 隨機抽題，回傳題目（不含正確答案）。"""
-    if df.empty:
-        raise HTTPException(503, detail="題庫未載入，請確認 questions.csv 存在且格式正確")
-    if len(df) < count:
-        raise HTTPException(400, detail=f"題庫只有 {len(df)} 題，無法抽出 {count} 題")
+    """從 Supabase 題庫隨機抽題，回傳題目（不含正確答案）。"""
+    if not questions_data:
+        raise HTTPException(503, detail="題庫未載入，請確認 Supabase 是否正常連線")
+    if len(questions_data) < count:
+        raise HTTPException(400, detail=f"題庫只有 {len(questions_data)} 題，無法抽出 {count} 題")
 
-    sampled = df.sample(n=count).to_dict("records")
+    sampled = random.sample(questions_data, count)
     session_id = str(uuid.uuid4())
 
     questions = []
@@ -156,13 +96,13 @@ def start_quiz(count: int = 5):
 
         questions.append(Question(
             id=qid,
-            tag=str(row["skill_tag"]),
+            tag=str(row.get("skill_tag", "未分類")),
             text=str(row["question_text"]),
             options=[
-                str(row["option_a"]),
-                str(row["option_b"]),
-                str(row["option_c"]),
-                str(row["option_d"]),
+                str(row.get("option_a", "")),
+                str(row.get("option_b", "")),
+                str(row.get("option_c", "")),
+                str(row.get("option_d", "")),
             ],
         ))
         correct_answers[qid] = correct_idx
@@ -182,7 +122,7 @@ def start_quiz(count: int = 5):
 @app.post("/api/quiz/submit", response_model=ExamResult)
 def submit_quiz(payload: AnswerSubmit):
     """
-    交卷：對答案，解析直接讀 CSV 的 explanation 欄位，不呼叫 LLM。
+    交卷：對答案，解析直接讀題庫欄位的 explanation。
     """
     session = exam_sessions.get(payload.session_id)
     if not session:
@@ -210,23 +150,21 @@ def submit_quiz(payload: AnswerSubmit):
         else:
             wrong_count += 1
 
-        # 解析直接從 CSV 讀，不需要任何 LLM 呼叫
         ai_analysis = str(row.get("explanation", "解析尚未提供"))
         translation = str(row.get("translation", ""))
 
-        # vocabulary 欄位支援頓號或逗號分隔
         raw_vocab  = str(row.get("vocabulary", ""))
         vocab_list = [v.strip() for v in raw_vocab.replace("、", ",").split(",") if v.strip()]
 
         question_results.append(QuestionResult(
             question_id=qid,
-            tag=str(row["skill_tag"]),
+            tag=str(row.get("skill_tag", "未分類")),
             question_text=str(row["question_text"]),
             options=[
-                str(row["option_a"]),
-                str(row["option_b"]),
-                str(row["option_c"]),
-                str(row["option_d"]),
+                str(row.get("option_a", "")),
+                str(row.get("option_b", "")),
+                str(row.get("option_c", "")),
+                str(row.get("option_d", "")),
             ],
             correct_index=correct_idx,
             user_answer=user_ans,
@@ -281,28 +219,28 @@ def get_user_stats(user_id: str):
 @app.post("/api/quiz/generate-practice")
 def generate_practice(question_id: str):
     """從題庫找相同 skill_tag 的其他題目當練習題。"""
-    if df.empty:
+    if not questions_data:
         raise HTTPException(503, detail="題庫未載入")
 
-    original = df[df["question_id"] == question_id]
-    if original.empty:
+    original = [q for q in questions_data if str(q.get("question_id")) == question_id]
+    if not original:
         raise HTTPException(404, detail=f"找不到題目 {question_id}")
 
-    tag      = original.iloc[0]["skill_tag"]
-    same_tag = df[(df["skill_tag"] == tag) & (df["question_id"] != question_id)]
+    tag = original[0].get("skill_tag")
+    same_tag = [q for q in questions_data if q.get("skill_tag") == tag and str(q.get("question_id")) != question_id]
 
-    if same_tag.empty:
+    if not same_tag:
         raise HTTPException(404, detail="找不到相同考點的其他題目")
 
-    row = same_tag.sample(n=1).iloc[0]
+    row = random.choice(same_tag)
     return {
-        "id":      str(row["question_id"]),
-        "tag":     str(row["skill_tag"]),
-        "text":    str(row["question_text"]),
+        "id":      str(row.get("question_id", "")),
+        "tag":     str(row.get("skill_tag", "")),
+        "text":    str(row.get("question_text", "")),
         "options": [
-            str(row["option_a"]),
-            str(row["option_b"]),
-            str(row["option_c"]),
-            str(row["option_d"]),
+            str(row.get("option_a", "")),
+            str(row.get("option_b", "")),
+            str(row.get("option_c", "")),
+            str(row.get("option_d", "")),
         ],
     }
