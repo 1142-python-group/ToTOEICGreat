@@ -7,8 +7,10 @@ class Question(BaseModel):
     tag: str                    # 例如：「單字 — 動詞」
     text: str                   # 題目文字
     options: list[str]          # ["A. ...", "B. ...", "C. ...", "D. ..."]
+    # 新增這兩個欄位給 Part 7 使用
+    article_text: Optional[str] = None 
+    article_type: Optional[str] = None
     # 注意：correct 欄位不回傳給前端！交卷後才由後端判斷
-
 class QuizSession(BaseModel):
     session_id: str             # 這次考試的唯一 ID
     questions: list[Question]   # 5 道題目
