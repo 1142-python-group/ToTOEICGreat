@@ -98,6 +98,7 @@ ToTOEICGreat/
 │   │   ├── account_service/  # 帳號認證與 JWT 驗證 (Supabase)
 │   │   ├── friendship_service/ # 好友系統與邀請機制
 │   │   ├── leaderboard_service/ # 排行榜 (分數/勤勉度)
+│   │   ├── history_practice/ # 生成個人化考題
 │   │   └── record_services/  # 作答紀錄與錯題本管理
 │   ├── questions.csv       # 靜態題庫資料
 │   └── .env                # 環境變數 (需自行建立)
