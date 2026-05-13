@@ -84,7 +84,7 @@ async def generate_history_practice(user_id: str = Depends(verify_token)):
     # ==========================================
     try:
         response = ai_client.models.generate_content(
-            model='gemini-3.1-flash-lite-preview',
+            model='gemini-2.5-flash',
             contents=prompt,
             config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.5, max_output_tokens=8192)
         )
@@ -120,8 +120,8 @@ async def generate_history_practice(user_id: str = Depends(verify_token)):
     p7 = ai_data.get("part7", {})
     group_id = get_short_id("G")
     
-    # 將文章寫入 articles 表
-    supabase.table("articles").insert({
+    # 將文章寫入 article 表
+    supabase.table("article").insert({
         "group_id": group_id, "article_type": p7.get("article_type"), 
         "article_text": p7.get("article_text"), "article_translation": p7.get("article_translation"), "vocabulary": p7.get("vocabulary")
     }).execute()
