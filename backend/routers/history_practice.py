@@ -6,7 +6,7 @@ import re
 from dotenv import load_dotenv
 from database import supabase
 from models import QuizSession, Question
-from routers.account_service.authen import verify_token
+from routers.auth import verify_token
 from google import genai
 from google.genai import types
 
