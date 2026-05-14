@@ -1,19 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from routers.account_service.authen import verify_token
-from supabase import create_client, Client
-import os
+from routers.auth import verify_token
+from database import supabase
 from typing import List, Optional
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/v1/leaderboard", tags=["Leaderboard"])
-
-# 初始化 Supabase Client
-url: str = os.environ.get("SUPABASE_URL")
-key: str = os.environ.get("SUPABASE_SECRET_KEY")
-if not url or not key:
-    raise RuntimeError("缺少 SUPABASE_URL 或 SUPABASE_SECRET_KEY 環境變數")
-
-supabase: Client = create_client(url, key)
 
 class LeaderboardScoreEntry(BaseModel):
     rank: int
@@ -31,7 +22,7 @@ class LeaderboardDiligenceEntry(BaseModel):
 
 @router.get("/scores", response_model=List[LeaderboardScoreEntry])
 async def get_score_leaderboard(
-    timeframe: str = Query("all_time", regex="^(all_time|this_month)$"),
+    timeframe: str = Query("all_time", pattern="^(all_time|this_month)$"),
     user_id: str = Depends(verify_token)
 ):
     """
@@ -50,7 +41,7 @@ async def get_score_leaderboard(
 
 @router.get("/diligence", response_model=List[LeaderboardDiligenceEntry])
 async def get_diligence_leaderboard(
-    timeframe: str = Query("this_week", regex="^(this_week|this_month|all_time)$"),
+    timeframe: str = Query("this_week", pattern="^(this_week|this_month|all_time)$"),
     user_id: str = Depends(verify_token)
 ):
     """
