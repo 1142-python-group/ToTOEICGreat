@@ -162,7 +162,7 @@ const api = {
     })
   },
 
-  async getUserStats(userId = "user_001") {
+  async getUserStats(userId) {
     const res = await fetch(`${API_BASE}/user/${userId}/stats`)
     if (!res.ok) throw new Error("無法取得使用者資料")
     return res.json()
@@ -274,7 +274,9 @@ const ProfileView = {
 
         <template v-else>
           <div class="profile-header-card">
-            <div class="profile-big-avatar">黃</div>
+            <div class="profile-big-avatar">
+              {{ userStats.username.charAt(0) }}
+            </div>
             <div>
               <div class="profile-name">{{ userStats.username }}</div>
               <div class="profile-meta">總作答題數：{{ userStats.total_questions }} 題</div>
@@ -1205,7 +1207,11 @@ const App = {
 
     async function fetchUserStats() {
       try {
-        state.userStats = await api.getUserStats("user_001")
+        const session = await getSession()
+        if (!session) return
+        
+        const userId = session.user.id  // 用真實登入者的 id
+        state.userStats = await api.getUserStats(userId)
       } catch (e) {
         console.error("無法取得使用者資料：", e)
       }

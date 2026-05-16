@@ -298,10 +298,22 @@ def submit_quiz(payload: AnswerSubmit):
 
 @app.get("/api/user/{user_id}/stats", response_model=UserStats)
 def get_user_stats(user_id: str):
+    # 1. 從 users 表拿 username
+    user_res = supabase.table("users").select("username").eq("id", user_id).single().execute()
+    username = user_res.data.get("username") or "使用者"
+    # 2. 從 exam_attempts 表拿作答紀錄
+    attempts_res = supabase.table("exam_attempts") \
+        .select("total_questions, accuracy_rate, created_at") \
+        .eq("user_id", user_id) \
+        .order("created_at") \
+        .execute()
+    attempts = attempts_res.data or []
+    total_questions = sum(a.get("total_questions", 0) for a in attempts)
+    estimated_score = round((attempts[-1]["accuracy_rate"] * 990)) if attempts else 0
     return UserStats(
-        username="測試考生",
-        total_questions=143,
-        estimated_score=750,
+        username=username,
+        total_questions=total_questions,
+        estimated_score=estimated_score,
         avg_time_per_q=42.0,
         score_history=[
             {"month": "1月", "score": 580},
