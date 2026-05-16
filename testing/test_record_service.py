@@ -32,28 +32,43 @@ def test_record_flow():
 
     headers = {"Authorization": f"Bearer {token}"}
     
-    print("--- 1. Testing Exam Submission ---")
-    # 使用資料庫中實際存在的 question_id (根據 MCP 查詢結果)
-    submit_data = {
-        "attempt_type": "custom_practice",
-        "config": {"parts": [5], "topic": "grammar"},
-        "total_time_spent": 300,
-        "answers": [
-            {"question_id": "SQ_e895fe", "user_answer": "A", "time_spent": 30},
-            {"question_id": "SQ_e51a2c", "user_answer": "B", "time_spent": 20}
-        ]
+    print("--- 1. Testing Quiz Session Flow ---")
+    # Start Quiz to get a session
+    start_resp = httpx.get(f"{API_BASE_URL}/api/quiz/start?count=2")
+    if start_resp.status_code != 200:
+        print(f"Start Quiz Failed: {start_resp.text}")
+        return
+    
+    quiz_data = start_resp.json()
+    session_id = quiz_data["session_id"]
+    questions = quiz_data["questions"]
+    print(f"Started Quiz! Session ID: {session_id}, Questions: {len(questions)}")
+
+    # Prepare submission
+    answers = {}
+    time_spent = {}
+    for q in questions:
+        answers[q["id"]] = 0 # Assume option A (index 0)
+        time_spent[q["id"]] = 10
+    
+    submit_payload = {
+        "session_id": session_id,
+        "answers": answers,
+        "time_spent_per_q": time_spent,
+        "attempt_type": "custom_practice"
     }
     
-    resp = httpx.post(f"{API_BASE_URL}/api/v1/exams/submit", headers=headers, json=submit_data)
+    print("\n--- 2. Testing Quiz Submission ---")
+    resp = httpx.post(f"{API_BASE_URL}/api/quiz/submit", headers=headers, json=submit_payload)
     if resp.status_code == 200:
         result = resp.json()
-        print(f"Submission Success! Attempt ID: {result.get('attempt_id')}")
-        print(f"Accuracy: {result.get('accuracy_rate') * 100}%")
+        print(f"Submission Success! Score: {result.get('score')}")
+        print(f"Correct: {result.get('correct_count')}/{len(questions)}")
     else:
         print(f"Submission Failed: {resp.text}")
         return
 
-    print("\n--- 2. Testing History Retrieval ---")
+    print("\n--- 3. Testing History Retrieval ---")
     resp = httpx.get(f"{API_BASE_URL}/api/v1/exams/history", headers=headers, params={"limit": 5})
     if resp.status_code == 200:
         history = resp.json()
