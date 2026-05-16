@@ -1276,3 +1276,185 @@ button {
   text-decoration: none;
 }
 .auth-switch a:hover { text-decoration: underline; }
+/* ════════════════════════════════════════════════
+   閱讀題（Part 7）專用樣式
+   ════════════════════════════════════════════════ */
+
+/* 作答畫面：閱讀題時切換為左文章 / 右題目的兩欄佈局 */
+.quiz-reading-layout {
+  display: grid;
+  grid-template-columns: 45% 1fr 180px;
+  max-width: 1300px;
+  margin: 0 auto;
+  gap: 24px;
+  align-items: start;
+}
+/* 左欄：文章區塊，佔滿整個左欄高度 */
+.quiz-article-panel {
+  background: #f8fafc;
+  border: 1px solid #dde3ec;
+  border-radius: 14px;
+  padding: 24px 28px;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  position: sticky;
+  top: 80px;           /* 固定在 navbar 下方，題目捲動時文章不動 */
+}
+
+.quiz-article-type-badge {
+  display: inline-block;
+  background: #185FA5;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 20px;
+  margin-bottom: 14px;
+}
+
+.quiz-article-text {
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.85;
+  color: #2d3748;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+}
+
+/* 閱讀題時右欄導覽列（放在作答區下方） */
+.quiz-reading-nav {
+  background: #fff;
+  border: 1px solid #dde3ec;
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 12px;
+}
+
+.quiz-reading-nav .q-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* 結果頁：閱讀題文章原文區塊 */
+.result-article-block {
+  background: #f8fafc;
+  border: 1px solid #dde3ec;
+  border-left: 4px solid #378ADD;
+  border-radius: 10px;
+  padding: 18px 20px;
+  margin-bottom: 20px;
+}
+
+.result-article-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.result-article-type-badge {
+  background: #185FA5;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.result-article-label {
+  font-size: 13px;
+  color: #718096;
+  font-weight: 500;
+}
+
+.result-article-text {
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.8;
+  color: #2d3748;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+}
+
+/* 結果頁文章翻譯展開區 */
+.quiz-article-translation-toggle {
+  margin-top: 16px;
+  border-top: 1px dashed #cbd5e0;
+  padding-top: 12px;
+}
+
+.btn-translation-toggle {
+  background: none;
+  border: 1px solid #378ADD;
+  color: #378ADD;
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-translation-toggle:hover {
+  background: rgba(55, 138, 221, 0.08);
+}
+
+.quiz-article-translation-text {
+  margin-top: 12px;
+  font-size: 13px;
+  line-height: 1.8;
+  color: #4a5568;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 手機版：上下堆疊 */
+@media (max-width: 768px) {
+  .quiz-reading-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .quiz-article-panel {
+    position: static;
+    max-height: 45vh;
+  }
+
+  .quiz-reading-nav {
+    margin-top: 0;
+  }
+}
+
+/* 聽力題播放器 */
+.audio-player-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 16px;
+  background: #f0f4f8;
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+
+.audio-play-hint {
+  font-size: 15px;
+  font-weight: 600;
+  color: #185FA5;
+}
+
+.audio-player {
+  width: 100%;
+  max-width: 420px;
+  border-radius: 8px;
+}
+
+.audio-play-limit {
+  font-size: 12px;
+  color: #888;
+}

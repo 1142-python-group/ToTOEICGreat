@@ -13,10 +13,10 @@ import uuid
 from database import supabase
 from models import Question, QuizSession, AnswerSubmit, QuestionResult, ExamResult, UserStats
 
-from routers.account_service.authen import app as auth_app
-from routers.friendship_service.friends import router as friendship_router
-from routers.record_services.records import router as record_router
-from routers.leaderboard_service.leaderboard import router as leaderboard_router
+from routers.auth import router as auth_router
+from routers.friends import router as friendship_router
+from routers.exams import router as record_router
+from routers.leaderboard import router as leaderboard_router
 from routers.history_practice import router as history_router
 
 
@@ -72,7 +72,7 @@ exam_sessions: dict = {}
 # ════════════════════════════════════════════════
 
 # 整合原本在 authen.py 中的路由 (例如 /me)
-app.include_router(auth_app.router)
+app.include_router(auth_router)
 
 # 註冊好友系統路由
 app.include_router(friendship_router)
