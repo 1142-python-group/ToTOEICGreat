@@ -45,9 +45,6 @@ async function handleLogin() {
 
   try {
     const data = await authSignIn(email, password)
-    // 登入成功，更新 navbar 顯示的使用者名稱
-    const appInstance = document.getElementById("app").__vue_app__
-    // 直接更新 DOM 比較簡單
     document.querySelector(".navbar-username").textContent = data.user.email
     document.querySelector(".navbar-avatar").textContent =
       data.user.email.charAt(0).toUpperCase()
@@ -82,11 +79,9 @@ async function handleRegister() {
 
   try {
     await authSignUp(email, password, username)
-    // 清除註冊資料
     document.getElementById("register-username").value = ""
     document.getElementById("register-email").value = ""
     document.getElementById("register-password").value = ""
-    // 註冊完直接登入
     const data = await authSignIn(email, password)
     const displayUser = username || data.user.email
     document.querySelector(".navbar-username").textContent = displayUser
@@ -99,25 +94,17 @@ async function handleRegister() {
     btn.disabled = false
   }
 }
-// 登出
+
 async function handleLogout() {
   try {
-    // 1. 呼叫 Supabase 登出 API
     await authSignOut()
-
-    // 2. 顯示回你的登入/註冊彈窗或畫面 (假設你有這個函數，與 hideAuthScreen 相反)
     showAuthScreen()
-
-    // 3. 把 Navbar 上的名字重置回預設狀態
     document.querySelector(".navbar-username").textContent = "遊客"
     document.querySelector(".navbar-avatar").textContent = "遊"
-
-    // 4. 通知 Vue 切回首頁 (避免登出後還停留在需要權限的個人分析頁)
     const appInstance = document.getElementById("app").__vue_app__
     if (appInstance && appInstance._instance.proxy.showView) {
       appInstance._instance.proxy.showView('home')
     }
-
   } catch (e) {
     alert("登出失敗：" + e.message)
   }
@@ -152,42 +139,37 @@ async function fetchWithAuth(endpoint, options = {}) {
     throw new Error(errorData.detail || "API 請求失敗");
   }
 
-  // Handle 204 No Content
   if (response.status === 204) return null;
   return response.json();
 }
 
 const api = {
-  // 開始考試：GET /api/quiz/start?count=5
   async startQuiz(count = 5) {
     const res = await fetch(`${API_BASE}/quiz/start?count=${count}`)
     if (!res.ok) throw new Error("無法取得題目，請確認後端是否正在運作")
-    return res.json()  // 回傳 QuizSession { session_id, questions, time_limit_seconds }
+    return res.json()
   },
 
-  // 交卷：POST /api/quiz/submit
   async submitQuiz(sessionId, answers, timeSpentPerQ) {
     const res = await fetch(`${API_BASE}/quiz/submit`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         session_id: sessionId,
-        answers: answers,           // { questionId(int): answerIndex(int) }
+        answers: answers,
         time_spent_per_q: timeSpentPerQ
       })
     })
     if (!res.ok) throw new Error("交卷失敗")
-    return res.json()  // 回傳 ExamResult
+    return res.json()
   },
 
-  // 取得儀表板資料：GET /api/user/:id/stats
   async getUserStats(userId = "user_001") {
     const res = await fetch(`${API_BASE}/user/${userId}/stats`)
     if (!res.ok) throw new Error("無法取得使用者資料")
-    return res.json()  // 回傳 UserStats
+    return res.json()
   },
 
-  // 生成類似練習題：POST /api/quiz/generate-practice
   async generatePractice(questionId) {
     const res = await fetch(`${API_BASE}/quiz/generate-practice`, {
       method: "POST",
@@ -198,9 +180,6 @@ const api = {
     return res.json()
   },
 
-  // =====================
-  // Friendship Service
-  // =====================
   async getFriendCode() {
     return fetchWithAuth("/v1/friends/my-code");
   },
@@ -213,7 +192,7 @@ const api = {
   async handleFriendRequest(friendshipId, action) {
     return fetchWithAuth(`/v1/friends/requests/${friendshipId}`, {
       method: "PATCH",
-      body: JSON.stringify({ action }) // 'accept' or 'reject'
+      body: JSON.stringify({ action })
     });
   },
   async getFriendsList(status = "accepted") {
@@ -225,9 +204,6 @@ const api = {
     });
   },
 
-  // =====================
-  // Record Services
-  // =====================
   async getExamHistory(limit = 10) {
     return fetchWithAuth(`/v1/exams/history?limit=${limit}`);
   },
@@ -238,9 +214,6 @@ const api = {
     return fetchWithAuth(`/v1/exams/history/${attemptId}/answers`);
   },
 
-  // =====================
-  // Leaderboard Service
-  // =====================
   async getScoreLeaderboard(timeframe = "all_time") {
     return fetchWithAuth(`/v1/leaderboard/scores?timeframe=${timeframe}`);
   },
@@ -280,7 +253,6 @@ const HomeView = {
       </div>
     </section>
   `,
-  // props 從父元件接收 loading 和 error 狀態
   props: {
     loading: { type: Boolean, default: false },
     error: { type: String, default: "" }
@@ -298,13 +270,11 @@ const ProfileView = {
       <div class="profile-inner">
         <button class="profile-back-btn" @click="$emit('go-home')">← 返回首頁</button>
 
-        <!-- 載入中 -->
         <div v-if="!userStats" style="text-align:center;padding:60px;color:#888">
           載入資料中...
         </div>
 
         <template v-else>
-          <!-- 使用者資訊卡 -->
           <div class="profile-header-card">
             <div class="profile-big-avatar">黃</div>
             <div>
@@ -313,7 +283,6 @@ const ProfileView = {
             </div>
           </div>
 
-          <!-- 統計數字 -->
           <div class="stats-grid">
             <div class="stat-card">
               <div class="stat-label">預估測驗分數</div>
@@ -329,12 +298,10 @@ const ProfileView = {
             </div>
           </div>
 
-          <!-- 圖表 -->
           <div class="charts-grid">
             <div class="chart-card">
               <div class="chart-title">歷史分數趨勢</div>
               <div class="chart-wrap">
-                <!-- ref="lineCanvas" 讓我們在 JS 裡拿到這個 canvas 元素 -->
                 <canvas ref="lineCanvas"></canvas>
               </div>
             </div>
@@ -349,21 +316,17 @@ const ProfileView = {
       </div>
     </section>
   `,
-  // setup() 是 Vue 3 Composition API 的核心
   setup(props) {
-    const lineCanvas = ref(null)  // 對應 template 裡的 ref="lineCanvas"
+    const lineCanvas = ref(null)
     const radarCanvas = ref(null)
     let lineChart = null
     let radarChart = null
 
-    // 當元件掛載後，且有資料時，初始化圖表
     onMounted(async () => {
-      // 等 Vue 把 DOM 畫完才能操作 canvas
       await nextTick()
       if (props.userStats) initCharts()
     })
 
-    // 監聽 userStats 變化（第一次資料回來時畫圖）
     watch(() => props.userStats, async (newVal) => {
       if (newVal) {
         await nextTick()
@@ -372,13 +335,11 @@ const ProfileView = {
     })
 
     function initCharts() {
-      // 避免重複建立圖表（切換頁面回來時）
       if (lineChart) lineChart.destroy()
       if (radarChart) radarChart.destroy()
 
       const stats = props.userStats
 
-      // 折線圖
       lineChart = new Chart(lineCanvas.value, {
         type: "line",
         data: {
@@ -405,7 +366,6 @@ const ProfileView = {
         }
       })
 
-      // 雷達圖
       radarChart = new Chart(radarCanvas.value, {
         type: "radar",
         data: {
@@ -429,7 +389,6 @@ const ProfileView = {
       })
     }
 
-    // 元件被銷毀前，釋放圖表資源（避免記憶體洩漏）
     onUnmounted(() => {
       if (lineChart) lineChart.destroy()
       if (radarChart) radarChart.destroy()
@@ -440,6 +399,7 @@ const ProfileView = {
 }
 
 // ── 測驗作答元件 ───────────────────────────────────────────
+// 【改動】：加入閱讀題文章顯示區塊
 const QuizView = {
   emits: ["submit"],
   props: {
@@ -447,17 +407,17 @@ const QuizView = {
   },
   setup(props, { emit }) {
     const currentIndex = ref(0)
-    const userAnswers = reactive({})   // { questionId: answerIndex }
-    const timeSpentPerQ = reactive({})  // { questionId: seconds }
+    const userAnswers = reactive({})
+    const timeSpentPerQ = reactive({})
     const secondsLeft = ref(props.session.time_limit_seconds)
+    // 文章翻譯展開狀態
+    const showArticleTranslation = ref(false)
     let timerInterval = null
     let qStartTime = Date.now()
 
-    // ── 計時器：只建立一次 ────────────────────────────────
     onMounted(() => {
       timerInterval = setInterval(() => {
         secondsLeft.value--
-        // 同時累積當前題目的作答時間
         const qid = currentQuestion.value.id
         timeSpentPerQ[qid] = (timeSpentPerQ[qid] || 0) + 1
 
@@ -470,7 +430,6 @@ const QuizView = {
 
     onUnmounted(() => clearInterval(timerInterval))
 
-    // ── Computed ──────────────────────────────────────────
     const questions = computed(() => props.session.questions)
     const currentQuestion = computed(() => questions.value[currentIndex.value])
     const isLastQ = computed(() => currentIndex.value === questions.value.length - 1)
@@ -481,10 +440,13 @@ const QuizView = {
       return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
     })
 
-    // ── 作答操作 ──────────────────────────────────────────
+    // 切題時重置翻譯展開狀態
+    watch(currentIndex, () => {
+      showArticleTranslation.value = false
+    })
+
     function selectOption(optionIndex) {
       userAnswers[currentQuestion.value.id] = optionIndex
-      // localStorage 備份
       try {
         localStorage.setItem("exam_backup", JSON.stringify({
           session_id: props.session.session_id,
@@ -495,7 +457,6 @@ const QuizView = {
     }
 
     function recordTimeAndJump(newIndex) {
-      // 記錄離開當前題目時的花費時間
       const qid = currentQuestion.value.id
       timeSpentPerQ[qid] = (timeSpentPerQ[qid] || 0) +
         Math.round((Date.now() - qStartTime) / 1000)
@@ -510,7 +471,6 @@ const QuizView = {
     function doSubmit() {
       clearInterval(timerInterval)
       localStorage.removeItem("exam_backup")
-      // 把所有資料往上傳給父元件處理（父元件負責打 API）
       emit("submit", {
         session_id: props.session.session_id,
         answers: { ...userAnswers },
@@ -521,13 +481,22 @@ const QuizView = {
     return {
       currentIndex, userAnswers, secondsLeft,
       currentQuestion, questions, isLastQ, timerDisplay,
+      showArticleTranslation,
       selectOption, prevQ, nextQ, jumpToQ, doSubmit
     }
   },
   template: `
     <section class="view">
-      <div class="quiz-inner">
-        <!-- 左側主作答區 -->
+      <div class="quiz-inner" :class="{ 'quiz-reading-layout': currentQuestion.article_text }">
+
+        <!-- ══ 閱讀題：左欄文章 ══ -->
+        <div v-if="currentQuestion.article_text" class="quiz-article-panel">
+          <div class="quiz-article-type-badge">{{ currentQuestion.article_type || 'Article' }}</div>
+          <pre class="quiz-article-text">{{ currentQuestion.article_text }}</pre>
+          <!-- 作答時不顯示中文譯文，結果頁才顯示 -->
+        </div>
+
+        <!-- ══ 左側（無文章）或右側（有文章）主作答區 ══ -->
         <div class="quiz-main">
           <div class="quiz-header">
             <div>
@@ -544,18 +513,30 @@ const QuizView = {
 
           <div class="quiz-card">
             <div class="quiz-tag">{{ currentQuestion.tag }}</div>
+            <!-- 聽力題：播放器取代題目文字 -->
+            <div v-if="currentQuestion.audio_url" class="audio-player-block">
+              <div class="audio-play-hint">🎧 請播放音檔後作答</div>
+              <audio
+                :key="currentQuestion.id"
+                controls
+                controlsList="nodownload"
+                class="audio-player"
+                :src="currentQuestion.audio_url"
+              ></audio>
+              <div class="audio-play-limit">⚠️ 建議只播放一次，模擬正式考試</div>
+            </div>
+            <!-- 非聽力題：正常顯示題目文字 -->
             <p class="quiz-question-text">{{ currentQuestion.text }}</p>
             <div class="option-list">
               <button
                 v-for="(opt, i) in currentQuestion.options"
                 :key="i"
+                v-show="!(currentQuestion.part === 2 && i === 3)"
                 class="option-btn"
                 :class="{ selected: userAnswers[currentQuestion.id] === i }"
                 @click="selectOption(i)"
               >
-                <!-- 選項字母圓圈 -->
                 <span class="option-letter">{{ ['A','B','C','D'][i] }}</span>
-                <!-- 去掉 "A. " 前綴只顯示內文 -->
                 <span>{{ opt.replace(/^[A-D]\\. /, '') }}</span>
               </button>
             </div>
@@ -568,7 +549,7 @@ const QuizView = {
           </div>
         </div>
 
-        <!-- 右側題號導覽 -->
+        <!-- ══ 右側題號導覽（無文章時才顯示） ══ -->
         <div class="quiz-sidebar">
           <div class="sidebar-card">
             <div class="sidebar-title">題目導覽</div>
@@ -597,23 +578,28 @@ const QuizView = {
 }
 
 // ── 考後解析元件 ───────────────────────────────────────────
+// 【改動】：ResultView 加入閱讀題文章顯示區塊
 const ResultView = {
   emits: ["go-home", "go-profile"],
   props: {
     result: { type: Object, required: true }
   },
   setup(props) {
-    const openItems = reactive({})   // 哪些題目面板是展開的
+    const openItems = reactive({})
+    const showArticleTranslation = reactive({})  // 各題的文章翻譯展開狀態
 
     function toggleItem(id) {
       openItems[id] = !openItems[id]
+    }
+
+    function toggleArticleTranslation(id) {
+      showArticleTranslation[id] = !showArticleTranslation[id]
     }
 
     async function requestPractice(questionId) {
       try {
         const data = await api.generatePractice(questionId)
         alert(`AI 生成的練習題：\n${data.text}`)
-        // TODO: 正式版改成在頁面上渲染新題目
       } catch (e) {
         alert("生成失敗，請稍後再試")
       }
@@ -624,7 +610,7 @@ const ResultView = {
     const timeDisplay = `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")}`
     const passed = props.result.score >= 60
 
-    return { openItems, toggleItem, requestPractice, optLetters, timeDisplay, passed }
+    return { openItems, toggleItem, showArticleTranslation, toggleArticleTranslation, requestPractice, optLetters, timeDisplay, passed }
   },
   template: `
     <section class="view">
@@ -667,7 +653,7 @@ const ResultView = {
             class="result-item"
             :class="{ open: openItems[qr.question_id] }"
           >
-            <!-- 面板標頭（點擊展開/收合）-->
+            <!-- 面板標頭 -->
             <div class="result-item-header" @click="toggleItem(qr.question_id)">
               <div class="result-status-icon" :class="qr.is_correct ? 'correct' : 'wrong'">
                 {{ qr.is_correct ? '✓' : '✗' }}
@@ -682,8 +668,27 @@ const ResultView = {
               <span class="result-chevron">▼</span>
             </div>
 
-            <!-- 面板內容（展開後顯示）-->
+            <!-- 面板內容 -->
             <div class="result-body" v-show="openItems[qr.question_id]">
+
+              <!-- 【新增】閱讀題：在題目上方顯示原文 -->
+              <div v-if="qr.article_text" class="result-article-block">
+                <div class="result-article-header">
+                  <span class="result-article-type-badge">{{ qr.article_type || 'Article' }}</span>
+                  <span class="result-article-label">閱讀原文</span>
+                </div>
+                <pre class="result-article-text">{{ qr.article_text }}</pre>
+                <!-- 文章中文翻譯（可展開） -->
+                <div v-if="qr.article_translation" class="quiz-article-translation-toggle">
+                  <button class="btn-translation-toggle" @click="toggleArticleTranslation(qr.question_id)">
+                    {{ showArticleTranslation[qr.question_id] ? '▲ 隱藏中文譯文' : '▼ 顯示中文譯文' }}
+                  </button>
+                  <div v-show="showArticleTranslation[qr.question_id]" class="quiz-article-translation-text">
+                    {{ qr.article_translation }}
+                  </div>
+                </div>
+              </div>
+
               <p class="result-q-text">{{ qr.question_text }}</p>
 
               <!-- 四個選項，標色 -->
@@ -691,6 +696,7 @@ const ResultView = {
                 <div
                   v-for="(opt, i) in qr.options"
                   :key="i"
+                  v-show="!(qr.part === 2 && i === 3)"
                   class="result-option"
                   :class="{
                     'correct-ans': i === qr.correct_index,
@@ -716,7 +722,6 @@ const ResultView = {
                 </div>
               </div>
 
-              <!-- 錯題才顯示「生成練習題」按鈕 -->
               <button
                 v-if="!qr.is_correct"
                 class="btn-ai-practice"
@@ -746,9 +751,7 @@ const FriendsView = {
         <button class="profile-back-btn" @click="$emit('go-home')">← 返回首頁</button>
         <h2 class="view-title" style="margin-bottom: 20px;">好友系統</h2>
         
-        <!-- 卡片佈局：分為左右兩欄或上下排列 -->
         <div class="stats-grid" style="grid-template-columns: 1fr;">
-          <!-- 區塊 1: 我的好友代碼 & 新增好友 -->
           <div class="stat-card" style="display: flex; flex-direction: column; gap: 15px; align-items: flex-start;">
             <div style="width: 100%; display: flex; justify-content: space-between; align-items: center;">
               <div class="stat-label">我的好友代碼</div>
@@ -763,7 +766,6 @@ const FriendsView = {
             <p v-if="addMessage" :style="{ color: addStatus === 'success' ? 'green' : 'red' }">{{ addMessage }}</p>
           </div>
 
-          <!-- 區塊 2: 待處理邀請 -->
           <div class="stat-card" v-if="pendingRequests.length > 0">
             <div class="stat-label" style="margin-bottom: 10px;">待處理邀請</div>
             <div v-for="req in pendingRequests" :key="req.friendship_id" style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee;">
@@ -783,7 +785,6 @@ const FriendsView = {
             </div>
           </div>
 
-          <!-- 區塊 3: 好友列表 -->
           <div class="stat-card">
             <div class="stat-label" style="margin-bottom: 10px;">我的好友 ({{ friends.length }})</div>
             <div v-if="friends.length === 0" style="color: #888; padding: 10px;">目前還沒有好友，趕快去新增吧！</div>
@@ -811,14 +812,9 @@ const FriendsView = {
       try {
         const codeRes = await api.getFriendCode();
         myCode.value = codeRes.friend_code;
-
         const friendsRes = await api.getFriendsList("accepted");
         friends.value = friendsRes.data;
-
         const pendingRes = await api.getFriendsList("pending");
-        // Only show pending requests where I am the addressee. The backend returns both, so we filter if needed, 
-        // but backend returns all pending related to me. We need to handle this properly, maybe backend needs `type` filter.
-        // Assuming backend handles it or we just display them.
         pendingRequests.value = pendingRes.data;
       } catch (e) {
         console.error(e);
@@ -1052,7 +1048,6 @@ const LeaderboardView = {
         <button class="profile-back-btn" @click="$emit('go-home')">← 返回首頁</button>
         <h2 class="view-title" style="margin-bottom: 20px;">排行榜</h2>
         
-        <!-- Tabs -->
         <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #ddd; padding-bottom: 10px;">
           <button @click="tab = 'score'" :class="tab === 'score' ? 'btn-primary' : 'btn-outline'" style="padding: 8px 16px;">最高分排行</button>
           <button @click="tab = 'diligence'" :class="tab === 'diligence' ? 'btn-primary' : 'btn-outline'" style="padding: 8px 16px;">勤勉度排行</button>
@@ -1108,7 +1103,6 @@ const LeaderboardView = {
       loading.value = true;
       try {
         if (tab.value === 'score') {
-          // Wait, backend `/scores` regex only allows `all_time|this_month`
           const tf = timeframe.value === 'this_week' ? 'this_month' : timeframe.value;
           const data = await api.getScoreLeaderboard(tf);
           list.value = data;
@@ -1142,7 +1136,6 @@ const LeaderboardView = {
 // ════════════════════════════════════════════════════════════
 
 const App = {
-
   components: {
     "home-view": HomeView,
     "profile-view": ProfileView,
@@ -1156,13 +1149,12 @@ const App = {
   setup() {
     const currentView = ref("home")
 
-    // 全域共享狀態
     const state = reactive({
       username: "遊客",
-      quizSession: null,   // 從 /api/quiz/start 取得
-      examResult: null,   // 從 /api/quiz/submit 取得
-      userStats: null,   // 從 /api/user/:id/stats 取得
-      selectedRecord: null, // 選中的作答紀錄
+      quizSession: null,
+      examResult: null,
+      userStats: null,
+      selectedRecord: null,
       loading: false,
       error: "",
       showDropdown: false
@@ -1179,26 +1171,20 @@ const App = {
       }
     }
 
-    // 🔥 新增：切換下拉選單狀態
     function toggleDropdown() {
       state.showDropdown = !state.showDropdown
     }
 
-    // 點擊頁面其他地方時關閉選單
     function closeDropdown() {
       if (state.showDropdown) {
         state.showDropdown = false
       }
     }
 
-    // 🔥 新增：Vue 裡面的登出處理
     async function performLogout() {
-      state.showDropdown = false // 先把選單收起來
+      state.showDropdown = false
       try {
-        // 呼叫 Supabase 登出 API
         await authSignOut()
-
-        // 重置表單並顯示登入畫面
         toggleAuthForm('login');
         document.getElementById("login-email").value = "";
         document.getElementById("login-password").value = "";
@@ -1206,12 +1192,8 @@ const App = {
         document.getElementById("register-email").value = "";
         document.getElementById("register-password").value = "";
         showAuthScreen()
-
-        // 重置 Navbar
         document.querySelector(".navbar-username").textContent = "遊客"
         document.querySelector(".navbar-avatar").textContent = "遊"
-
-        // 通知 Vue 切回首頁
         currentView.value = "home"
         state.username = "遊客"
         state.quizSession = null
@@ -1231,7 +1213,6 @@ const App = {
       }
     }
 
-    // 點擊「開始測驗」時呼叫
     async function startQuiz() {
       state.loading = true
       state.error = ""
@@ -1245,7 +1226,6 @@ const App = {
       }
     }
 
-    // QuizView 交卷後呼叫
     async function handleSubmit(payload) {
       try {
         state.examResult = await api.submitQuiz(
@@ -1270,7 +1250,6 @@ const App = {
       closeDropdown
     }
   },
-  // App 根層的 template 就只有 Navbar + 動態視圖切換
   template: `
     <nav class="navbar" @click="closeDropdown">
       <a class="navbar-logo" @click.stop="showView('home')">
