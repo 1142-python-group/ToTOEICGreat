@@ -31,7 +31,7 @@ class LeaderboardDiligenceEntry(BaseModel):
 
 @router.get("/scores", response_model=List[LeaderboardScoreEntry])
 async def get_score_leaderboard(
-    timeframe: str = Query("all_time", regex="^(all_time|this_month)$"),
+    timeframe: str = Query("all_time", pattern="^(all_time|this_month)$"),
     user_id: str = Depends(verify_token)
 ):
     """
@@ -50,7 +50,7 @@ async def get_score_leaderboard(
 
 @router.get("/diligence", response_model=List[LeaderboardDiligenceEntry])
 async def get_diligence_leaderboard(
-    timeframe: str = Query("this_week", regex="^(this_week|this_month|all_time)$"),
+    timeframe: str = Query("this_week", pattern="^(this_week|this_month|all_time)$"),
     user_id: str = Depends(verify_token)
 ):
     """
