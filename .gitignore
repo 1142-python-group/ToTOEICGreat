@@ -1,3 +1,14 @@
 .env
 .env.local
 .gemini
+.venv
+__pycache__/
+*.pyc
+
+# 語音腳本
+audio/
+scripts/
+toeic_part2_questions.csv
+
+# 所需套件
+requirements.txt
