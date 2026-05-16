@@ -2,7 +2,7 @@
 多多益善 — FastAPI 後端主程式
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import random
 import uuid
@@ -10,7 +10,7 @@ from database import supabase, SUPABASE_URL
 from models import Question, QuizSession, AnswerSubmit, QuestionResult, ExamResult, UserStats
 from pydantic import BaseModel
 
-from routers.auth import router as auth_router
+from routers.auth import router as auth_router, verify_token
 from routers.friends import router as friendship_router
 from routers.exams import router as record_router
 from routers.leaderboard import router as leaderboard_router
@@ -39,6 +39,12 @@ def letter_to_index(letter: str) -> int:
     if result is None:
         raise ValueError(f"無效的答案欄位值：'{letter}'，應為 A/B/C/D")
     return result
+
+def index_to_letter(idx: int) -> str:
+    if idx is None:
+        return None
+    mapping = {0: "A", 1: "B", 2: "C", 3: "D"}
+    return mapping.get(idx)
 
 
 # ════════════════════════════════════════════════
@@ -215,7 +221,7 @@ def start_quiz(count: int = 5):
 # ════════════════════════════════════════════════
 
 @app.post("/api/quiz/submit", response_model=ExamResult)
-def submit_quiz(payload: AnswerSubmit):
+def submit_quiz(payload: AnswerSubmit, user_id: str = Depends(verify_token)):
     session = exam_sessions.get(payload.session_id)
     if not session:
         raise HTTPException(404, detail="找不到此考試 session，可能已過期")
@@ -229,6 +235,8 @@ def submit_quiz(payload: AnswerSubmit):
     unanswered_count = 0
     question_results = []
     total_time       = sum(payload.time_spent_per_q.values())
+    
+    records_to_insert = []
 
     for row in session_questions:
         qid         = str(row["question_id"])
@@ -242,6 +250,17 @@ def submit_quiz(payload: AnswerSubmit):
             correct_count += 1
         else:
             wrong_count += 1
+
+        # 準備資料庫紀錄
+        user_ans_letter = index_to_letter(user_ans)
+        records_to_insert.append({
+            "user_id": user_id,
+            "question_id": qid,
+            "user_answer": user_ans_letter,
+            "is_correct": is_correct,
+            "time_spent": payload.time_spent_per_q.get(qid, 0),
+            "review_status": "needs_review" if not is_correct and user_ans is not None else None
+        })
 
         ai_analysis = str(row.get("explanation", "解析尚未提供"))
         translation = str(row.get("translation", ""))
@@ -280,6 +299,29 @@ def submit_quiz(payload: AnswerSubmit):
 
     total_q = len(session_questions)
     score   = round((correct_count / total_q) * 100) if total_q else 0
+    accuracy_rate = correct_count / total_q if total_q > 0 else 0
+
+    # 1. 寫入測驗紀錄 (exam_attempts)
+    attempt_data = {
+        "user_id": user_id,
+        "attempt_type": payload.attempt_type or "practice",
+        "total_questions": total_q,
+        "correct_answers": correct_count,
+        "accuracy_rate": accuracy_rate,
+        "total_time_spent": total_time,
+    }
+    
+    try:
+        attempt_res = supabase.table("exam_attempts").insert(attempt_data).execute()
+        if attempt_res.data:
+            attempt_id = attempt_res.data[0]["id"]
+            # 2. 批次寫入作答明細 (answer_records)
+            for r in records_to_insert:
+                r["attempt_id"] = attempt_id
+            supabase.table("answer_records").insert(records_to_insert).execute()
+    except Exception as e:
+        print(f"⚠️  測驗紀錄存入失敗：{e}")
+
     del exam_sessions[payload.session_id]
 
     return ExamResult(
