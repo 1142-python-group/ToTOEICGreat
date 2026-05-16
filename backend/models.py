@@ -26,6 +26,7 @@ class AnswerSubmit(BaseModel):
     session_id: str
     answers: dict[str, int]          # { 題目id: 選項index(0-3) }
     time_spent_per_q: dict[str, int] # { 題目id: 花費秒數 }
+    attempt_type: Optional[str] = "practice"  # 新增：區分練習或模考
 
 # ── 成績 / 解析 ───────────────────────────────
 class QuestionResult(BaseModel):
