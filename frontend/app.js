@@ -151,17 +151,15 @@ const api = {
   },
 
   async submitQuiz(sessionId, answers, timeSpentPerQ) {
-    const res = await fetch(`${API_BASE}/quiz/submit`, {
+    return fetchWithAuth("/quiz/submit", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         session_id: sessionId,
         answers: answers,
-        time_spent_per_q: timeSpentPerQ
+        time_spent_per_q: timeSpentPerQ,
+        attempt_type: "practice"
       })
     })
-    if (!res.ok) throw new Error("交卷失敗")
-    return res.json()
   },
 
   async getUserStats(userId = "user_001") {
