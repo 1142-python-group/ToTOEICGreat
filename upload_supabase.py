@@ -1,4 +1,6 @@
 """
+python upload_supabase.py --part 2 
+python upload_supabase.py --part 3
 把 CSV 題目 + 對應 mp3 上傳到 Supabase
 
 流程：
@@ -29,6 +31,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+from html import parser
 import os
 import sys
 from pathlib import Path
@@ -47,11 +50,12 @@ from supabase import create_client, Client
 # 設定
 # ---------------------------------------------------------------------------
 
-CSV_PATH = Path("toeic_part2_questions.csv")
-AUDIO_DIR = Path("audio/L2")
+CSV_PATH_PART2 = Path("toeic_part2_questions.csv")
+CSV_PATH_PART3 = Path("toeic_part3_questions.csv")
+AUDIO_DIR_PART2 = Path("audio/L2")
+AUDIO_DIR_PART3 = Path("audio/L3")
 BUCKET = "audio"
 TABLE = "questions"
-PART = 2
 
 
 # ---------------------------------------------------------------------------
@@ -150,16 +154,25 @@ def upload_mp3(sb: Client, mp3_path: Path, storage_path: str) -> bool:
 
 def main():
     parser = argparse.ArgumentParser(description="把 CSV + mp3 上傳到 Supabase")
-    parser.add_argument("--csv", type=Path, default=CSV_PATH, help="CSV 路徑")
-    parser.add_argument("--audio-dir", type=Path, default=AUDIO_DIR, help="mp3 資料夾")
+    parser.add_argument(
+        "--part",
+        type=int,
+        choices=[2, 3],
+        default=2,
+        help="要上傳 TOEIC Listening 哪一大題：2 或 3",
+    )
+    parser.add_argument("--csv", type=Path, default=None, help="CSV 路徑，不填則依 part 自動選擇")
+    parser.add_argument("--audio-dir", type=Path, default=None, help="mp3 資料夾，不填則依 part 自動選擇")
     parser.add_argument("--limit", type=int, default=None, help="只處理前 N 題（測試用）")
     parser.add_argument("--dry-run", action="store_true", help="只列印不上傳")
     parser.add_argument("--skip-audio", action="store_true", help="只寫 DB，不上傳 mp3")
     args = parser.parse_args()
 
-    if not args.csv.exists():
-        print(f"❌ 找不到 {args.csv}", file=sys.stderr)
-        sys.exit(1)
+    if args.csv is None:
+        args.csv = CSV_PATH_PART2 if args.part == 2 else CSV_PATH_PART3
+
+    if args.audio_dir is None:
+        args.audio_dir = AUDIO_DIR_PART2 if args.part == 2 else AUDIO_DIR_PART3
 
     rows = load_csv(args.csv)
     print(f"📄 從 {args.csv} 讀到 {len(rows)} 題")
@@ -183,6 +196,7 @@ def main():
 
     for i, row in enumerate(rows, 1):
         qid = row.get("question_id", "")
+        group_id = row.get("group_id", "").strip()
         if not qid:
             print(f"[{i}/{len(rows)}] ⚠️ 沒有 question_id,跳過")
             stats["failed"] += 1
@@ -195,8 +209,14 @@ def main():
             continue
 
         # 找對應 mp3
-        mp3_path = args.audio_dir / f"{qid}.mp3"
-        storage_path = f"{qid}.mp3"
+        if args.part == 3:
+            audio_id = group_id
+            storage_path = f"{audio_id}.mp3"
+        else:
+            audio_id = qid
+            storage_path = f"{audio_id}.mp3"
+
+        mp3_path = args.audio_dir / f"{audio_id}.mp3"
 
         if not args.skip_audio:
             if not mp3_path.exists():
@@ -214,6 +234,7 @@ def main():
         # 2. 組 DB 資料
         record: dict[str, Any] = {
             "question_id":    qid,
+            "group_id":       group_id,
             "question_text":  row.get("question_text", ""),
             "option_a":       row.get("option_a", ""),
             "option_b":       row.get("option_b", ""),
@@ -224,7 +245,7 @@ def main():
             "skill_tag":      row.get("skill_tag", ""),
             "translation":    row.get("translation", ""),
             "vocabulary":     row.get("vocabulary", ""),
-            "part":           PART,
+            "part":           args.part,
             "audio_path":     storage_path,
             # created_at 不填,讓 DB 預設值 now() 自動帶
         }

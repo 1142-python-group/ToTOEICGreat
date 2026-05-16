@@ -148,6 +148,65 @@ async def generate_part2_question(
         os.remove(path)
     os.rmdir(tmp_dir)
 
+async def generate_part3_conversation(
+    dialog: list[tuple[str, str]],
+    output: str,
+    rate: str = "-5%",
+    line_pause_ms: int = 350,
+):
+    """
+    產生一段 Part 3 對話音檔。
+
+    dialog 結構：
+      [
+        ["UK_male", "Good morning..."],
+        ["US_male", "Oh, right..."],
+        ...
+      ]
+
+    Part 3 不需要唸 A/B/C/D，因為音檔只播放對話。
+    題目與選項通常顯示在畫面或試卷上。
+    """
+    if len(dialog) < 2:
+        raise ValueError(f"Part 3 對話至少需要 2 句，實際收到 {len(dialog)} 句")
+
+    output_folder = os.path.dirname(output)
+    if output_folder:
+        os.makedirs(output_folder, exist_ok=True)
+
+    tmp_dir = f"tmp_tts_{Path(output).stem}"
+    os.makedirs(tmp_dir, exist_ok=True)
+
+    segments = []
+
+    for i, (speaker, line) in enumerate(dialog):
+        voice = VOICES.get(speaker)
+
+        if voice is None:
+            raise ValueError(f"未知的說話者：{speaker}，可用：{list(VOICES.keys())}")
+
+        seg_path = f"{tmp_dir}/seg_{i}.mp3"
+        await synthesize_line(line, voice, seg_path, rate=rate)
+
+        is_last = i == len(dialog) - 1
+        segments.append((seg_path, 0 if is_last else line_pause_ms))
+
+        print(f"  [{speaker}]: {line[:70]}...")
+
+    combined = AudioSegment.empty()
+
+    for path, pause in segments:
+        combined += AudioSegment.from_mp3(path)
+        if pause > 0:
+            combined += AudioSegment.silent(duration=pause)
+
+    combined.export(output, format="mp3")
+    print(f"  ✓ {output}（{len(combined) / 1000:.1f} 秒）\n")
+
+    for path, _ in segments:
+        os.remove(path)
+
+    os.rmdir(tmp_dir)
 
 def load_questions_from_csv(csv_path: str) -> list[dict]:
     """
@@ -179,8 +238,52 @@ def load_questions_from_csv(csv_path: str) -> list[dict]:
             })
     return questions
 
+def load_part3_groups_from_csv(csv_path: str) -> list[dict]:
+    """
+    從 Part 3 CSV 讀取題組。
+    同一個 group_id 只產生一個音檔。
+    """
+    groups = {}
+
+    with open(csv_path, "r", encoding="utf-8-sig") as f:
+        reader = csv.DictReader(f)
+
+        for i, row in enumerate(reader, start=1):
+            group_id = row.get("group_id", "").strip()
+            question_id = row.get("question_id", "").strip()
+
+            if not group_id:
+                group_id = question_id
+
+            if group_id in groups:
+                continue
+
+            scripts_raw = row.get("scripts", "").strip()
+
+            if not scripts_raw:
+                print(f"⚠️ 第 {i} 列沒有 scripts 欄位，略過")
+                continue
+
+            try:
+                script = json.loads(scripts_raw)
+            except json.JSONDecodeError as e:
+                print(f"❌ 第 {i} 列 scripts 解析失敗：{e}")
+                continue
+
+            dialog = [tuple(item) for item in script["dialog"]]
+
+            groups[group_id] = {
+                "group_id": group_id,
+                "rate": script.get("rate", "-5%"),
+                "title": script.get("title", ""),
+                "dialog": dialog,
+                "skill_tag": row.get("skill_tag", "").strip(),
+            }
+
+    return list(groups.values())
 
 async def main():
+    # part 2
     csv_path = Path("toeic_part2_questions.csv")
     output_dir = Path("audio/L2")
     output_dir.mkdir(exist_ok=True)
@@ -190,7 +293,7 @@ async def main():
         return
 
     questions = load_questions_from_csv(str(csv_path))
-    print(f"從 CSV 讀到 {len(questions)} 道題目。\n")
+    print(f"從 CSV 讀到 {len(questions)} 道 Part 2題目。\n")
 
     # 跳過已存在的音檔
     pending = []
@@ -219,6 +322,52 @@ async def main():
     print(f"\n✅ 全部完成！共處理 {len(pending)} 道題目")
     if failed:
         print(f"⚠️  有 {len(failed)} 道題目處理失敗：{failed}")
+
+    # part 3
+    csv_path = Path("toeic_part3_questions.csv")
+    output_dir = Path("audio/L3")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    if not csv_path.exists():
+        print(f"❌ 找不到 {csv_path}")
+        return
+
+    groups = load_part3_groups_from_csv(str(csv_path))
+    print(f"從 CSV 讀到 {len(groups)} 組 Part 3 對話。\n")
+
+    pending = []
+
+    for g in groups:
+        out_path = output_dir / f"{g['group_id']}.mp3"
+
+        if out_path.exists():
+            continue
+
+        pending.append((g, out_path))
+
+    print(f"其中 {len(pending)} 組尚未生成音檔，開始處理...\n")
+
+    failed = []
+
+    for g, out_path in pending:
+        print(f"=== {g['group_id']} [{g['skill_tag']}] {g['title']} ===")
+
+        try:
+            await generate_part3_conversation(
+                dialog=g["dialog"],
+                output=str(out_path),
+                rate=g["rate"],
+            )
+
+        except Exception as e:
+            print(f"❌ {g['group_id']} 處理失敗：{e}\n")
+            failed.append(g["group_id"])
+            continue
+
+    print(f"\n✅ 全部完成！共處理 {len(pending)} 組 Part 3 對話")
+
+    if failed:
+        print(f"⚠️ 有 {len(failed)} 組處理失敗：{failed}")
 
 
 if __name__ == "__main__":

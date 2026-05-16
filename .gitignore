@@ -2,3 +2,9 @@
 .env.local
 .gemini
 **/__pycache__/
+
+audio/
+.venv/
+requirements.txt
+toeic_part2_questions.csv
+toeic_part3_questions.csv
