@@ -2,3 +2,4 @@
 .env.local
 .gemini
 **/__pycache__/
+*.pyc

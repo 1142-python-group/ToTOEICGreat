@@ -7,10 +7,15 @@ class Question(BaseModel):
     tag: str                    # 例如：「單字 — 動詞」
     text: str                   # 題目文字
     options: list[str]          # ["A. ...", "B. ...", "C. ...", "D. ..."]
-    # 新增這兩個欄位給 Part 7 使用
-    article_text: Optional[str] = None 
+    # Part 7 閱讀題欄位
+    article_text: Optional[str] = None
     article_type: Optional[str] = None
+    article_translation: Optional[str] = None   # 新增
+    group_id: Optional[str] = None              # 新增，前端用來判斷同組題目
+    audio_url: Optional[str] = None                # 聽力題的音檔 URL
+    part: Optional[int] = None              # 2/3/4/5/7，前端用來顯示不同圖示
     # 注意：correct 欄位不回傳給前端！交卷後才由後端判斷
+
 class QuizSession(BaseModel):
     session_id: str             # 這次考試的唯一 ID
     questions: list[Question]   # 5 道題目
@@ -34,6 +39,13 @@ class QuestionResult(BaseModel):
     ai_analysis: str            # LLM 生成的解析
     translation: str            # 中文翻譯
     vocab: list[str]            # 關鍵單字
+    # Part 7 閱讀題欄位（結果頁顯示文章用）
+    article_text: Optional[str] = None
+    article_type: Optional[str] = None
+    article_translation: Optional[str] = None
+    group_id: Optional[str] = None
+    audio_url: Optional[str] = None  # 聽力題的音檔 URL
+    part: Optional[int] = None              # 2/3/4/5/7，前端用來顯示不同圖示
 
 class ExamResult(BaseModel):
     score: int                  # 0-100
