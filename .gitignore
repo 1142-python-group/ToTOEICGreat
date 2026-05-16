@@ -1,5 +1,5 @@
 .env
 .env.local
 .gemini
-__pycache__/
+**/__pycache__/
 *.pyc

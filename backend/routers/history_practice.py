@@ -6,7 +6,7 @@ import re
 from dotenv import load_dotenv
 from database import supabase
 from models import QuizSession, Question
-from routers.account_service.authen import verify_token
+from routers.auth import verify_token
 from google import genai
 from google.genai import types
 
@@ -120,8 +120,8 @@ async def generate_history_practice(user_id: str = Depends(verify_token)):
     p7 = ai_data.get("part7", {})
     group_id = get_short_id("G")
     
-    # 將文章寫入 articles 表
-    supabase.table("articles").insert({
+    # 將文章寫入 article 表
+    supabase.table("article").insert({
         "group_id": group_id, "article_type": p7.get("article_type"), 
         "article_text": p7.get("article_text"), "article_translation": p7.get("article_translation"), "vocabulary": p7.get("vocabulary")
     }).execute()
