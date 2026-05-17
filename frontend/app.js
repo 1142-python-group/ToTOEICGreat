@@ -45,9 +45,10 @@ async function handleLogin() {
 
   try {
     const data = await authSignIn(email, password)
-    document.querySelector(".navbar-username").textContent = data.user.email
+    const displayUser = data.user.user_metadata?.username || data.user.email
+    document.querySelector(".navbar-username").textContent = displayUser
     document.querySelector(".navbar-avatar").textContent =
-      data.user.email.charAt(0).toUpperCase()
+      displayUser.charAt(0).toUpperCase()
     hideAuthScreen()
   } catch (e) {
     errorEl.textContent = e.message === "Invalid login credentials"
@@ -83,7 +84,7 @@ async function handleRegister() {
     document.getElementById("register-email").value = ""
     document.getElementById("register-password").value = ""
     const data = await authSignIn(email, password)
-    const displayUser = username || data.user.email
+    const displayUser = data.user.user_metadata?.username || username || data.user.email
     document.querySelector(".navbar-username").textContent = displayUser
     document.querySelector(".navbar-avatar").textContent = displayUser.charAt(0).toUpperCase()
     hideAuthScreen()
@@ -178,6 +179,12 @@ const api = {
     return res.json()
   },
 
+  async generateHistoryPractice() {
+    return fetchWithAuth("/quiz/generate-history-practice", {
+      method: "POST"
+    });
+  },
+
   async getFriendCode() {
     return fetchWithAuth("/v1/friends/my-code");
   },
@@ -228,19 +235,35 @@ const { createApp, ref, reactive, computed, onMounted, onUnmounted, watch, nextT
 
 // ── 首頁元件 ──────────────────────────────────────────────
 const HomeView = {
-  emits: ["start-quiz", "go-profile"],
+  emits: ["start-quiz", "start-history-practice", "go-profile", "go-leaderboard"],
   template: `
     <section class="view home-view">
       <div class="home-bg-watermark">益</div>
-      <div class="home-card">
+      <div class="home-card" style="position: relative;">
+        <!-- 載入中遮罩 -->
+        <div v-if="loading" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; border-radius: 12px; backdrop-filter: blur(3px);">
+          <style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
+          <div style="width: 40px; height: 40px; border: 4px solid #378ADD; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px;"></div>
+          <div style="color: #378ADD; font-weight: bold; font-size: 1.1rem;">AI 正在為您處理...</div>
+          <div style="color: #666; font-size: 0.9rem; margin-top: 5px;">請稍候，這可能需要一點時間</div>
+        </div>
+
         <div class="home-eyebrow">★ AI 驅動練習</div>
         <h1 class="home-title">準備好突破你的<br>多益極限了嗎？</h1>
         <p class="home-subtitle">系統已根據你的歷史弱點，為你精選本次個人化試題。</p>
-        <div class="home-btns">
+        <div class="home-btns" style="flex-wrap: wrap; gap: 10px; justify-content: center;">
+          <style>
+            .btn-lightblue { background-color: #60A5FA !important; border-color: #60A5FA !important; }
+            .btn-lightblue:hover:not(:disabled) { background-color: #3B82F6 !important; border-color: #3B82F6 !important; }
+          </style>
           <button class="btn-primary" @click="$emit('start-quiz')" :disabled="loading">
-            {{ loading ? "載入題目中..." : "▶ 開始專屬模擬測驗" }}
+            ▶ 開始模擬測驗
           </button>
-          <button class="btn-secondary" @click="$emit('go-profile')">查看個人分析</button>
+          <button class="btn-primary btn-lightblue" @click="$emit('start-history-practice')" :disabled="loading">
+            ▶ 開始客製化易錯測驗
+          </button>
+          <button class="btn-secondary" @click="$emit('go-profile')" :disabled="loading">查看個人分析</button>
+          <button class="btn-outline" @click="$emit('go-leaderboard')" :disabled="loading">查看排行榜</button>
         </div>
         <div class="home-tags">
           <span class="home-tag">5 題</span>
@@ -282,9 +305,15 @@ const ProfileView = {
           </div>
 
           <div class="stats-grid">
+            <!-- 註解掉分數計算：
             <div class="stat-card">
               <div class="stat-label">預估測驗分數</div>
               <div class="stat-value">{{ userStats.estimated_score }}</div>
+            </div>
+            -->
+            <div class="stat-card">
+              <div class="stat-label">預估正確率</div>
+              <div class="stat-value">{{ userStats.estimated_score > 100 ? Math.round(userStats.estimated_score / 990 * 100) : userStats.estimated_score }}<small>%</small></div>
             </div>
             <div class="stat-card">
               <div class="stat-label">平均單題作答時間</div>
@@ -298,7 +327,7 @@ const ProfileView = {
 
           <div class="charts-grid">
             <div class="chart-card">
-              <div class="chart-title">歷史分數趨勢</div>
+              <div class="chart-title">歷史正確率趨勢</div>
               <div class="chart-wrap">
                 <canvas ref="lineCanvas"></canvas>
               </div>
@@ -358,7 +387,7 @@ const ProfileView = {
           maintainAspectRatio: false,
           plugins: { legend: { display: false } },
           scales: {
-            y: { min: 500, max: 990 },
+            y: { min: 0, max: 100 },
             x: { grid: { display: false } }
           }
         }
@@ -455,10 +484,7 @@ const QuizView = {
     }
 
     function recordTimeAndJump(newIndex) {
-      const qid = currentQuestion.value.id
-      timeSpentPerQ[qid] = (timeSpentPerQ[qid] || 0) +
-        Math.round((Date.now() - qStartTime) / 1000)
-      qStartTime = Date.now()
+      // timeSpentPerQ is already incrementally tracked in the setInterval
       currentIndex.value = newIndex
     }
 
@@ -619,7 +645,7 @@ const ResultView = {
           <div class="score-circle-wrap">
             <div class="score-circle" :class="{ fail: !passed }">
               <span class="score-value">{{ result.score }}</span>
-              <span class="score-denom">/ 100</span>
+              <span class="score-denom">% 正確率</span>
             </div>
           </div>
           <div class="result-stats">
@@ -887,9 +913,11 @@ const RecordsView = {
               </div>
             </div>
             <div style="text-align: right;">
+              <!-- 註解掉多益分數的推估
               <div v-if="record.attempt_type === 'full_mock' || record.attempt_type === 'mock'" style="font-size: 1.5rem; font-weight: 700; color: #378ADD;">
                 {{ Math.round(record.accuracy_rate * 990) }} 分
               </div>
+              -->
               <div style="font-size: 1.2rem; font-weight: 600;" :style="{ color: record.accuracy_rate >= 0.6 ? '#378ADD' : '#BA7517' }">
                 {{ record.correct_answers }} / {{ record.total_questions }}
               </div>
@@ -961,6 +989,16 @@ const RecordDetailView = {
             </div>
             
             <div class="result-body" style="display: block;">
+              <!-- 聽力題音檔區塊 -->
+              <div v-if="ans.questions.audio_path" class="audio-player-block" style="margin-bottom: 15px;">
+                <audio
+                  controls
+                  class="audio-player"
+                  :src="getAudioUrl(ans.questions.audio_path)"
+                  style="width: 100%; border-radius: 8px;"
+                ></audio>
+              </div>
+
               <p class="result-q-text">{{ ans.questions.question_text }}</p>
               
               <div class="result-options-grid" style="margin-top: 15px;">
@@ -982,6 +1020,12 @@ const RecordDetailView = {
                 <div class="ai-block-title">正確答案：{{ ans.questions.correct_answer }}</div>
                 <div class="ai-block-content" style="margin-top: 10px;">
                   <p>{{ ans.questions.explanation || '暫無解析' }}</p>
+                  <p v-if="ans.questions.translation" style="margin-top:8px;opacity:0.8">
+                    <strong>中文翻譯：</strong>{{ ans.questions.translation }}
+                  </p>
+                </div>
+                <div class="ai-block-vocab" v-if="ans.questions.vocabulary && ans.questions.vocabulary.trim()" style="margin-top: 10px;">
+                  <span v-for="v in ans.questions.vocabulary.split(',')" :key="v" v-show="v.trim()" class="vocab-pill" style="display:inline-block; background: #e0f2fe; color: #378ADD; padding: 4px 10px; border-radius: 99px; font-size: 0.85rem; margin-right: 6px; margin-bottom: 6px;">{{ v.trim() }}</span>
                 </div>
               </div>
               
@@ -1034,7 +1078,12 @@ const RecordDetailView = {
       }
     };
 
-    return { loading, showErrorsOnly, filteredAnswers, updateStatus };
+    const getAudioUrl = (path) => {
+      if (!path) return null;
+      return `https://xhlwsnflkrkfpweoljgj.supabase.co/storage/v1/object/public/audio/${path}`;
+    };
+
+    return { loading, showErrorsOnly, filteredAnswers, updateStatus, getAudioUrl };
   }
 };
 
@@ -1047,7 +1096,7 @@ const LeaderboardView = {
         <h2 class="view-title" style="margin-bottom: 20px;">排行榜</h2>
         
         <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #ddd; padding-bottom: 10px;">
-          <button @click="tab = 'score'" :class="tab === 'score' ? 'btn-primary' : 'btn-outline'" style="padding: 8px 16px;">最高分排行</button>
+          <button @click="tab = 'score'" :class="tab === 'score' ? 'btn-primary' : 'btn-outline'" style="padding: 8px 16px;">正確率排行</button>
           <button @click="tab = 'diligence'" :class="tab === 'diligence' ? 'btn-primary' : 'btn-outline'" style="padding: 8px 16px;">勤勉度排行</button>
           
           <select v-model="timeframe" @change="fetchData" style="margin-left: auto; padding: 8px; border-radius: 8px; border: 1px solid #ddd;">
@@ -1064,7 +1113,7 @@ const LeaderboardView = {
             <div style="display: grid; grid-template-columns: 60px 1fr 100px; padding: 15px 20px; background: #f8fafc; font-weight: bold; border-bottom: 1px solid #eee;">
               <div>名次</div>
               <div>使用者</div>
-              <div style="text-align: right;">{{ tab === 'score' ? '分數' : '刷題數' }}</div>
+              <div style="text-align: right;">{{ tab === 'score' ? '正確率' : '刷題數' }}</div>
             </div>
             
             <div v-if="list.length === 0" style="padding: 30px; text-align: center; color: #888;">
@@ -1083,7 +1132,7 @@ const LeaderboardView = {
                 <span v-if="item.is_me" style="font-size: 0.75rem; background: #378ADD; color: white; padding: 2px 6px; border-radius: 10px; margin-left: 5px;">你</span>
               </div>
               <div style="text-align: right; font-size: 1.1rem; font-weight: bold; color: #333;">
-                {{ tab === 'score' ? item.score : item.total_questions_solved }}
+                {{ tab === 'score' ? (item.score > 100 ? Math.round(item.score / 990 * 100) : item.score) + '%' : item.total_questions_solved }}
               </div>
             </div>
           </div>
@@ -1224,6 +1273,27 @@ const App = {
       }
     }
 
+    async function startHistoryPractice() {
+      state.loading = true
+      state.error = ""
+
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("生成時間過久，請稍後再試")), 30000)
+      );
+
+      try {
+        state.quizSession = await Promise.race([
+          api.generateHistoryPractice(),
+          timeoutPromise
+        ]);
+        showView("quiz")
+      } catch (e) {
+        state.error = e.message
+      } finally {
+        state.loading = false
+      }
+    }
+
     async function handleSubmit(payload) {
       try {
         state.examResult = await api.submitQuiz(
@@ -1242,6 +1312,7 @@ const App = {
       state,
       showView,
       startQuiz,
+      startHistoryPractice,
       handleSubmit,
       toggleDropdown,
       performLogout,
@@ -1288,7 +1359,9 @@ const App = {
       :loading="state.loading"
       :error="state.error"
       @start-quiz="startQuiz"
+      @start-history-practice="startHistoryPractice"
       @go-profile="showView('profile')"
+      @go-leaderboard="showView('leaderboard')"
     />
     <profile-view
       v-if="currentView === 'profile'"
@@ -1332,9 +1405,10 @@ createApp(App).mount("#app")
 setTimeout(async () => {
   const session = await getSession()
   if (session) {
-    document.querySelector(".navbar-username").textContent = session.user.email
+    const displayUser = session.user.user_metadata?.username || session.user.email
+    document.querySelector(".navbar-username").textContent = displayUser
     document.querySelector(".navbar-avatar").textContent =
-      session.user.email.charAt(0).toUpperCase()
+      displayUser.charAt(0).toUpperCase()
     hideAuthScreen()
   } else {
     showAuthScreen()

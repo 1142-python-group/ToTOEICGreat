@@ -343,15 +343,15 @@ def get_user_stats(user_id: str):
     return UserStats(
         username="測試考生",
         total_questions=143,
-        estimated_score=750,
+        estimated_score=76,
         avg_time_per_q=42.0,
         score_history=[
-            {"month": "1月", "score": 580},
-            {"month": "2月", "score": 615},
-            {"month": "3月", "score": 640},
-            {"month": "4月", "score": 670},
-            {"month": "5月", "score": 715},
-            {"month": "6月", "score": 750},
+            {"month": "1月", "score": 58},
+            {"month": "2月", "score": 62},
+            {"month": "3月", "score": 64},
+            {"month": "4月", "score": 67},
+            {"month": "5月", "score": 71},
+            {"month": "6月", "score": 76},
         ],
         radar_data=[
             {"label": "文法",     "value": 75},

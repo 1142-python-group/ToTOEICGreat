@@ -23,7 +23,7 @@ async def get_exam_history(attempt_type: Optional[str] = None, limit: int = 10, 
 async def get_error_book(status: str = "needs_review", part: Optional[int] = None, user_id: str = Depends(verify_token)):
     # 執行 JOIN 查詢
     query = supabase.table("answer_records").select(
-        "*, questions!inner(question_text, option_a, option_b, option_c, option_d, correct_answer, explanation, skill_tag, part)"
+        "*, questions!inner(question_text, option_a, option_b, option_c, option_d, correct_answer, explanation, skill_tag, part, audio_path, translation, vocabulary)"
     ).eq("user_id", user_id).eq("is_correct", False).eq("review_status", status)
     
     if part:
@@ -35,7 +35,7 @@ async def get_error_book(status: str = "needs_review", part: Optional[int] = Non
 @router.get("/history/{attempt_id}/answers")
 async def get_exam_answers(attempt_id: str, user_id: str = Depends(verify_token)):
     query = supabase.table("answer_records").select(
-        "*, questions!inner(question_text, option_a, option_b, option_c, option_d, correct_answer, explanation, skill_tag, part)"
+        "*, questions!inner(question_text, option_a, option_b, option_c, option_d, correct_answer, explanation, skill_tag, part, audio_path, translation, vocabulary)"
     ).eq("user_id", user_id).eq("attempt_id", attempt_id)
     
     res = query.execute()
