@@ -19,9 +19,16 @@ from routers.history_practice import router as history_router
 
 app = FastAPI(title="多多益善 API", version="1.0.0")
 
+origins = [
+    "https://totoeicgreat-frontend.onrender.com", # 你的前端正式網址
+    "http://localhost:3000",
+    "http://127.0.0.1:3000"
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
