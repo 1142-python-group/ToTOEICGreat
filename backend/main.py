@@ -21,6 +21,7 @@ app = FastAPI(title="多多益善 API", version="1.0.0")
 
 origins = [
     "https://totoeicgreat-frontend.onrender.com", # 你的前端正式網址
+    "https://totoeicgreat.onrender.com",
     "http://localhost:3000",
     "http://127.0.0.1:3000"
 ]
