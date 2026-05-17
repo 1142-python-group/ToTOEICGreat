@@ -112,7 +112,7 @@ async function handleLogout() {
 }
 
 
-const API_BASE = "http://0.0.0.0:8000/api"
+const API_BASE = "https://toeic-backend-api.onrender.com/api"
 
 async function fetchWithAuth(endpoint, options = {}) {
   const session = await getSession();
