@@ -145,8 +145,24 @@ async function fetchWithAuth(endpoint, options = {}) {
 }
 
 const api = {
-  async startQuiz(count = 5) {
-    const res = await fetch(`${API_BASE}/quiz/start?count=${count}`)
+  async startQuiz(params = {}) {
+    const {
+      vocabCount = 5,
+      listeningCount = 3,
+      readingGroups = 1,
+      includeListening = true,
+      includeVocab = true,
+      includeReading = true,
+    } = params
+    const qs = new URLSearchParams({
+      vocab_count: vocabCount,
+      listening_count: listeningCount,
+      reading_groups: readingGroups,
+      include_listening: includeListening,
+      include_vocab: includeVocab,
+      include_reading: includeReading,
+    })
+    const res = await fetch(`${API_BASE}/quiz/start?${qs}`)
     if (!res.ok) throw new Error("無法取得題目，請確認後端是否正在運作")
     return res.json()
   },
@@ -236,48 +252,82 @@ const { createApp, ref, reactive, computed, onMounted, onUnmounted, watch, nextT
 // ── 首頁元件 ──────────────────────────────────────────────
 const HomeView = {
   emits: ["start-quiz", "start-history-practice", "go-profile", "go-leaderboard"],
+  props: {
+    loading: { type: Boolean, default: false },
+    error: { type: String, default: "" }
+  },
+  setup(props, { emit }) {
+    const vocabCount = ref(5)
+    const listeningCount = ref(3)
+    const readingGroupCount = ref(1)
+    const includeListening = ref(true)
+    const includeVocab = ref(true)
+    const includeReading = ref(true)
+
+    function startQuiz() {
+      emit("start-quiz", {
+        vocabCount: vocabCount.value,
+        listeningCount: listeningCount.value,
+        readingGroups: readingGroupCount.value,
+        includeListening: includeListening.value,
+        includeVocab: includeVocab.value,
+        includeReading: includeReading.value,
+      })
+    }
+
+    return { vocabCount, listeningCount, readingGroupCount, includeListening, includeVocab, includeReading, startQuiz }
+  },
   template: `
     <section class="view home-view">
       <div class="home-bg-watermark">益</div>
-      <div class="home-card" style="position: relative;">
-        <!-- 載入中遮罩 -->
-        <div v-if="loading" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; border-radius: 12px; backdrop-filter: blur(3px);">
-          <style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
+      <div class="home-card" style="position: relative; max-width: 620px;">
+        <div v-if="loading" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; border-radius: 12px;">
           <div style="width: 40px; height: 40px; border: 4px solid #378ADD; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px;"></div>
-          <div style="color: #378ADD; font-weight: bold; font-size: 1.1rem;">AI 正在為您處理...</div>
-          <div style="color: #666; font-size: 0.9rem; margin-top: 5px;">請稍候，這可能需要一點時間</div>
+          <div style="color: #378ADD; font-weight: bold;">載入題目中...</div>
         </div>
 
         <div class="home-eyebrow">★ AI 驅動練習</div>
         <h1 class="home-title">準備好突破你的<br>多益極限了嗎？</h1>
-        <p class="home-subtitle">系統已根據你的歷史弱點，為你精選本次個人化試題。</p>
-        <div class="home-btns" style="flex-wrap: wrap; gap: 10px; justify-content: center;">
-          <style>
-            .btn-lightblue { background-color: #60A5FA !important; border-color: #60A5FA !important; }
-            .btn-lightblue:hover:not(:disabled) { background-color: #3B82F6 !important; border-color: #3B82F6 !important; }
-          </style>
-          <button class="btn-primary" @click="$emit('start-quiz')" :disabled="loading">
+
+        <!-- 題型設定 -->
+        <div class="quiz-config-grid">
+          <label class="quiz-config-item" :class="{ active: includeListening }">
+            <input type="checkbox" v-model="includeListening" style="display:none">
+            <div class="quiz-config-icon">🎧</div>
+            <div class="quiz-config-label">聽力題</div>
+            <input v-if="includeListening" type="number" v-model.number="listeningCount" min="1" max="10" class="quiz-config-num" @click.stop>
+            <div v-else class="quiz-config-off">關閉</div>
+          </label>
+
+          <label class="quiz-config-item" :class="{ active: includeVocab }">
+            <input type="checkbox" v-model="includeVocab" style="display:none">
+            <div class="quiz-config-icon">📝</div>
+            <div class="quiz-config-label">單字題</div>
+            <input v-if="includeVocab" type="number" v-model.number="vocabCount" min="1" max="20" class="quiz-config-num" @click.stop>
+            <div v-else class="quiz-config-off">關閉</div>
+          </label>
+
+          <label class="quiz-config-item" :class="{ active: includeReading }">
+            <input type="checkbox" v-model="includeReading" style="display:none">
+            <div class="quiz-config-icon">📖</div>
+            <div class="quiz-config-label">閱讀題</div>
+            <input v-if="includeReading" type="number" v-model.number="readingGroupCount" min="1" max="5" class="quiz-config-num" @click.stop>
+            <div v-else class="quiz-config-off">關閉</div>
+          </label>
+        </div>
+
+        <div class="home-btns" style="margin-top: 20px;">
+          <button class="btn-primary" @click="startQuiz" :disabled="loading || (!includeListening && !includeVocab && !includeReading)">
             ▶ 開始模擬測驗
           </button>
           <button class="btn-primary btn-lightblue" @click="$emit('start-history-practice')" :disabled="loading">
-            ▶ 開始客製化易錯測驗
+            ▶ 客製化易錯測驗
           </button>
-          <button class="btn-secondary" @click="$emit('go-profile')" :disabled="loading">查看個人分析</button>
-          <button class="btn-outline" @click="$emit('go-leaderboard')" :disabled="loading">查看排行榜</button>
-        </div>
-        <div class="home-tags">
-          <span class="home-tag">5 題</span>
-          <span class="home-tag">限時 15 分鐘</span>
-          <span class="home-tag">AI 解析啟用</span>
         </div>
         <p v-if="error" style="color:red;margin-top:12px;font-size:14px">{{ error }}</p>
       </div>
     </section>
-  `,
-  props: {
-    loading: { type: Boolean, default: false },
-    error: { type: String, default: "" }
-  }
+  `
 }
 
 // ── 個人儀表板元件 ─────────────────────────────────────────
@@ -620,12 +670,18 @@ const ResultView = {
       showArticleTranslation[id] = !showArticleTranslation[id]
     }
 
+    const practiceQuestion = ref(null)
+    const practiceLoading = ref(false)
+
     async function requestPractice(questionId) {
+      practiceLoading.value = true
       try {
         const data = await api.generatePractice(questionId)
-        alert(`AI 生成的練習題：\n${data.text}`)
+        practiceQuestion.value = { ...data, selectedAnswer: null }
       } catch (e) {
         alert("生成失敗，請稍後再試")
+      } finally {
+        practiceLoading.value = false
       }
     }
 
@@ -634,7 +690,8 @@ const ResultView = {
     const timeDisplay = `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")}`
     const passed = props.result.score >= 60
 
-    return { openItems, toggleItem, showArticleTranslation, toggleArticleTranslation, requestPractice, optLetters, timeDisplay, passed }
+    return { openItems, toggleItem, showArticleTranslation, toggleArticleTranslation,
+             requestPractice, practiceQuestion, practiceLoading, optLetters, timeDisplay, passed }
   },
   template: `
     <section class="view">
@@ -750,9 +807,65 @@ const ResultView = {
                 v-if="!qr.is_correct"
                 class="btn-ai-practice"
                 @click="requestPractice(qr.question_id)"
+                :disabled="practiceLoading"
               >
-                ★ 產生類似考點練習題
+                {{ practiceLoading ? '生成中...' : '★ 產生類似考點練習題' }}
               </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 練習題彈窗 -->
+        <div v-if="practiceQuestion" class="practice-modal-backdrop" @click.self="practiceQuestion = null">
+          <div class="practice-modal">
+            <button class="practice-modal-close" @click="practiceQuestion = null">✕</button>
+            <div class="practice-modal-label">★ AI 生成練習題</div>
+            <p class="practice-modal-tag">{{ practiceQuestion.tag }}</p>
+
+            <!-- 閱讀題：顯示文章 -->
+            <div v-if="practiceQuestion.article_text" class="practice-article-block">
+              <div class="quiz-article-type-badge">{{ practiceQuestion.article_type || 'Article' }}</div>
+              <pre class="quiz-article-text">{{ practiceQuestion.article_text }}</pre>
+            </div>
+
+            <!-- 聽力題：播放器 -->
+            <div v-if="practiceQuestion.audio_url" class="audio-player-block" style="margin-bottom: 16px;">
+              <div class="audio-play-hint">🎧 請播放音檔後作答</div>
+              <audio :key="practiceQuestion.id" controls controlsList="nodownload"
+                class="audio-player" :src="practiceQuestion.audio_url"></audio>
+            </div>
+            <!-- 題目文字（Part 2 沒有文字所以不顯示，其他都顯示） -->
+            <p v-if="practiceQuestion.text && practiceQuestion.text.trim()" class="practice-modal-text">{{ practiceQuestion.text }}</p>
+
+            <div class="option-list">
+              <button
+                v-for="(opt, i) in practiceQuestion.options"
+                :key="i"
+                v-show="!(practiceQuestion.part === 2 && i === 3)"
+                class="option-btn"
+                :class="{
+                  selected: practiceQuestion.selectedAnswer === i,
+                  'correct-highlight': practiceQuestion.selectedAnswer !== null && i === practiceQuestion.correct_index,
+                  'wrong-highlight': practiceQuestion.selectedAnswer !== null && i === practiceQuestion.selectedAnswer && practiceQuestion.selectedAnswer !== practiceQuestion.correct_index
+                }"
+                @click="practiceQuestion.selectedAnswer === null && (practiceQuestion.selectedAnswer = i)"
+              >
+                <span class="option-letter">{{ ['A','B','C','D'][i] }}</span>
+                <span>{{ opt }}</span>
+              </button>
+            </div>
+
+            <!-- 選完後顯示解析 -->
+            <div v-if="practiceQuestion.selectedAnswer !== null" class="practice-result-block">
+              <div :class="practiceQuestion.selectedAnswer === practiceQuestion.correct_index ? 'practice-result-correct' : 'practice-result-wrong'">
+                {{ practiceQuestion.selectedAnswer === practiceQuestion.correct_index ? '✓ 答對了！' : '✗ 答錯了，正確答案是 ' + ['A','B','C','D'][practiceQuestion.correct_index] }}
+              </div>
+              <div v-if="practiceQuestion.explanation" style="margin-top: 12px; font-size: 14px; line-height: 1.7; color: #2d3748;">
+                {{ practiceQuestion.explanation }}
+              </div>
+              <div v-if="practiceQuestion.translation" style="margin-top: 8px; font-size: 13px; color: #666;">
+                <strong>中文翻譯：</strong>{{ practiceQuestion.translation }}
+              </div>
             </div>
           </div>
         </div>
@@ -1260,11 +1373,11 @@ const App = {
       }
     }
 
-    async function startQuiz() {
+    async function startQuiz(quizConfig = {}) {
       state.loading = true
       state.error = ""
       try {
-        state.quizSession = await api.startQuiz(5)
+        state.quizSession = await api.startQuiz(quizConfig)
         showView("quiz")
       } catch (e) {
         state.error = e.message
