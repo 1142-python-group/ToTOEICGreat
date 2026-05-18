@@ -163,7 +163,7 @@ const api = {
     })
   },
 
-  async getUserStats(userId = "user_001") {
+  async getUserStats(userId) {
     const res = await fetch(`${API_BASE}/user/${userId}/stats`)
     if (!res.ok) throw new Error("無法取得使用者資料")
     return res.json()
@@ -297,7 +297,9 @@ const ProfileView = {
 
         <template v-else>
           <div class="profile-header-card">
-            <div class="profile-big-avatar">黃</div>
+            <div class="profile-big-avatar">
+              {{ userStats.username.charAt(0) }}
+            </div>
             <div>
               <div class="profile-name">{{ userStats.username }}</div>
               <div class="profile-meta">總作答題數：{{ userStats.total_questions }} 題</div>
@@ -316,12 +318,12 @@ const ProfileView = {
               <div class="stat-value">{{ userStats.estimated_score > 100 ? Math.round(userStats.estimated_score / 990 * 100) : userStats.estimated_score }}<small>%</small></div>
             </div>
             <div class="stat-card">
-              <div class="stat-label">平均單題作答時間</div>
+              <div class="stat-label">平均單次作答時間</div>
               <div class="stat-value">{{ userStats.avg_time_per_q.toFixed(0) }}<small> 秒</small></div>
             </div>
             <div class="stat-card">
               <div class="stat-label">好友排行</div>
-              <div class="stat-value">Top 3</div>
+              <div class="stat-value">{{ userStats.friend_rank }}</div>
             </div>
           </div>
 
@@ -387,7 +389,7 @@ const ProfileView = {
           maintainAspectRatio: false,
           plugins: { legend: { display: false } },
           scales: {
-            y: { min: 0, max: 100 },
+            y: { min: 0, max: 990 },
             x: { grid: { display: false } }
           }
         }
@@ -1210,7 +1212,7 @@ const App = {
     function showView(view, payload = null) {
       currentView.value = view
       state.showDropdown = false
-      if (view === "profile" && !state.userStats) {
+      if (view === "profile") {
         fetchUserStats()
       }
       if (view === "record-detail" && payload) {
@@ -1254,7 +1256,16 @@ const App = {
 
     async function fetchUserStats() {
       try {
-        state.userStats = await api.getUserStats("user_001")
+        const session = await getSession()
+        if (!session) return
+        
+        const userId = session.user.id  // 用真實登入者的 id
+        state.userStats = await api.getUserStats(userId)
+        const scoreLeaderboard = await api.getScoreLeaderboard("all_time")
+        const meInLeaderboard = scoreLeaderboard.find(item => item.is_me === true)
+        state.userStats.friend_rank = meInLeaderboard
+          ? `Top ${meInLeaderboard.rank} `
+          : "夯爆了"
       } catch (e) {
         console.error("無法取得使用者資料：", e)
       }

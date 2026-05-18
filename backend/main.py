@@ -6,9 +6,11 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import random
 import uuid
+import json
 from database import supabase, SUPABASE_URL
 from models import Question, QuizSession, AnswerSubmit, QuestionResult, ExamResult, UserStats
 from pydantic import BaseModel
+from collections import defaultdict
 
 from routers.auth import router as auth_router, verify_token
 from routers.friends import router as friendship_router
@@ -46,6 +48,30 @@ def index_to_letter(idx: int) -> str:
     mapping = {0: "A", 1: "B", 2: "C", 3: "D"}
     return mapping.get(idx)
 
+def classify_skill_tag(tag_raw):
+    if isinstance(tag_raw, list):
+        tag = tag_raw[0] if tag_raw else ""
+    elif isinstance(tag_raw, str):
+        try:
+            parsed = json.loads(tag_raw)
+            tag = parsed[0] if isinstance(parsed, list) else tag_raw
+        except:
+            tag = tag_raw
+    else:
+        tag = str(tag_raw)
+
+    if tag.startswith("文法"):
+        return "文法"
+    elif tag.startswith("單字"):
+        return "單字"
+    elif tag.startswith("閱讀") or "細節理解" in tag or "原因理解" in tag or "主旨" in tag or "推論" in tag or "對話主旨" in tag:
+        return "閱讀理解"
+    elif "WH問句" in tag or "Yes/No" in tag or "附加問句" in tag or "否定疑問句" in tag or "選擇疑問句" in tag or "間接疑問句" in tag or "陳述句回應" in tag:
+        return "聽力"
+    elif "建議" in tag or "請求" in tag or "說話者意圖" in tag or "說話目的" in tag or "下一步行動" in tag or "推論(Inference)" in tag:
+        return "推論能力"
+    else:
+        return "商業用語"
 
 # ════════════════════════════════════════════════
 # 讀取題庫（分批讀取資料庫資料）
@@ -340,27 +366,72 @@ def submit_quiz(payload: AnswerSubmit, user_id: str = Depends(verify_token)):
 
 @app.get("/api/user/{user_id}/stats", response_model=UserStats)
 def get_user_stats(user_id: str):
+    # username
+    user_res = supabase.table("users").select("username").eq("id", user_id).single().execute()
+    username = user_res.data.get("username") or "使用者"
+
+    # 從 exam_attempts 表拿作答紀錄
+    attempts_res = supabase.table("exam_attempts") \
+        .select("total_questions, accuracy_rate, created_at, total_time_spent") \
+        .eq("user_id", user_id) \
+        .order("created_at") \
+        .execute()
+    attempts = attempts_res.data or []
+
+    # 預估分數
+    total_questions = sum(a.get("total_questions", 0) for a in attempts)
+    accuracies = [float(a["accuracy_rate"]) for a in attempts if a.get("accuracy_rate") is not None]
+    estimated_score = round(sum(accuracies) / len(accuracies) * 990) if accuracies else 0
+
+    # 平均作答時間
+    total_time = sum(a.get("total_time_spent") or 0 for a in attempts)
+    # total_q = sum(a.get("total_questions", 0) for a in attempts)
+    # avg_time_per_q = round(total_time / total_q, 1) if total_q > 0 else 0
+    avg_time_per_q = round(total_time / len(attempts), 1) if attempts else 0
+
+    # 近五次測驗折線圖
+    recent_attempts = attempts[-5:] if len(attempts) > 5 else attempts
+    score_history = [
+        {
+            "month": a["created_at"][5:10].replace("-", "/"),
+            "score": round(float(a["accuracy_rate"]) * 990)
+        }
+        for a in recent_attempts
+    ]
+
+    # 雷達圖
+    records_res = supabase.table("answer_records") \
+        .select("is_correct, questions!inner(skill_tag)") \
+        .eq("user_id", user_id) \
+        .execute()
+    records = records_res.data or []
+    tag_stats = defaultdict(lambda: {"correct": 0, "total": 0})
+    for r in records:
+        raw_tag = r["questions"]["skill_tag"]
+        category = classify_skill_tag(raw_tag)
+        tag_stats[category]["total"] += 1
+        if r["is_correct"]:
+            tag_stats[category]["correct"] += 1
+
+    categories = ["文法", "單字", "閱讀理解", "聽力", "推論能力", "商業用語"]
+    radar_data = [
+        {
+            "label": cat,
+            "value": round(tag_stats[cat]["correct"] / tag_stats[cat]["total"] * 100)
+                    if tag_stats[cat]["total"] > 0 else 0,
+            # "value": tag_stats[cat]["correct"],
+        }
+        for cat in categories
+    ]
+    
     return UserStats(
-        username="測試考生",
-        total_questions=143,
-        estimated_score=76,
-        avg_time_per_q=42.0,
-        score_history=[
-            {"month": "1月", "score": 58},
-            {"month": "2月", "score": 62},
-            {"month": "3月", "score": 64},
-            {"month": "4月", "score": 67},
-            {"month": "5月", "score": 71},
-            {"month": "6月", "score": 76},
-        ],
-        radar_data=[
-            {"label": "文法",     "value": 75},
-            {"label": "單字",     "value": 82},
-            {"label": "閱讀理解", "value": 68},
-            {"label": "推論能力", "value": 72},
-            {"label": "商業用語", "value": 88},
-            {"label": "聽力",    "value": 60},
-        ],
+        username=username,
+        total_questions=total_questions,
+        estimated_score=estimated_score,
+        friend_rank="-",
+        avg_time_per_q=avg_time_per_q,
+        score_history=score_history if score_history else [{"month": "尚無資料", "score": 0}],
+        radar_data=radar_data,
     )
 
 
