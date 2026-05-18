@@ -50,18 +50,24 @@ async def generate_history_practice(user_id: str = Depends(verify_token)):
     # 2. 嚴格的混合出題 Prompt (3 題 Part5 + 1文2題 Part7)
     # ==========================================
     prompt = f"""
-你是一個專業的多益老師。學生最近在以下考點答錯了：
+你是一位嚴謹且經驗豐富的 ETS 多益官方命題專家。學生最近在以下考點答錯了：
 {error_context}
 
 請針對這些弱點，生成一份包含 5 題的「高難度真實多益」特訓卷。
 包含：3 題 Part 5 (單選填空) + 1 篇 Part 7 商業文章 (約120字) 配 2 題閱讀測驗。
 
-請嚴格回傳以下 JSON 格式：
+【⚠️ 核心出題品質守則 - 請嚴格遵守】：
+1. 唯一正解原則：四個選項中必須有且只有「一個」絕對正確的解答。請反覆檢查選項，絕對不可出現兩個文法或語意皆可通的爭議選項。
+2. 高難度誘答設計 (Distractors)：難度不應來自 GRE 級別的冷僻單字，而是利用多益常見的陷阱（如：詞性混淆、時態陷阱、易混淆搭配詞 Collocation）來設計錯誤選項。錯誤選項必須看似合理，但有致命的文法或語意錯誤。
+3. Part 7 邏輯嚴密：閱讀測驗的答案必須在文章中有「明確的改寫 (Paraphrasing) 或對應線索」，絕對不可要求學生憑空臆測。文章邏輯必須自洽、符合真實商業情境。
+4. 深度解析：在 explanation 欄位中，除了翻譯，必須精準點出「為什麼這個選項對」以及「其他選項的陷阱在哪裡」。
+
+請嚴格回傳以下 JSON 格式（絕對不要包含任何 markdown 標記、```json 或說明文字，確保可以被 json.loads 直接解析）：
 {{
   "part5": [
     {{
       "question_text": "第1題英文題目", "option_a": "A", "option_b": "B", "option_c": "C", "option_d": "D",
-      "correct_answer": "A/B/C/D", "explanation": "繁體中文解析", "translation": "翻譯", "vocabulary": "單字 (詞性) - 說明", "skill_tag": "考點"
+      "correct_answer": "A/B/C/D", "explanation": "繁體中文解析(說明正解與陷阱)", "translation": "題目與選項的完整翻譯", "vocabulary": "單字 (詞性) - 說明", "skill_tag": "考點"
     }} // 共 3 個物件
   ],
   "part7": {{
@@ -72,7 +78,7 @@ async def generate_history_practice(user_id: str = Depends(verify_token)):
     "questions": [
       {{
          "question_text": "閱讀題1", "option_a": "A", "option_b": "B", "option_c": "C", "option_d": "D",
-         "correct_answer": "A/B/C/D", "explanation": "解析", "translation": "翻譯", "skill_tag": "閱讀-主旨題"
+         "correct_answer": "A/B/C/D", "explanation": "解析(說明線索在文章何處)", "translation": "題目與選項翻譯", "skill_tag": "閱讀-主旨題"
       }} // 共 2 個物件
     ]
   }}
