@@ -278,10 +278,14 @@ def start_quiz(
 
     print(f"📝 本次測驗：聽力 {len(listening_sampled)} 題 + 單字 {len(standalone_sampled)} 題 + 閱讀 {len(reading_sampled)} 題 = 共 {len(sampled)} 題")
 
+    # 策略：單字題 20s, 聽力題 45s, 閱讀題 60s
+    time_limit = (len(standalone_sampled) * 20) + (len(listening_sampled) * 45) + (len(reading_sampled) * 60)
+    time_limit = max(time_limit, 120) # 保底 2 分鐘
+
     return QuizSession(
         session_id=session_id,
         questions=questions,
-        time_limit_seconds=900,
+        time_limit_seconds=time_limit,
     )
 
 
@@ -437,7 +441,7 @@ def get_user_stats(user_id: str):
     score_history = [
         {
             "month": a["created_at"][5:10].replace("-", "/"),
-            "score": round(float(a["accuracy_rate"]) * 990)
+            "score": round(float(a["accuracy_rate"]) * 100)
         }
         for a in recent_attempts
     ]
