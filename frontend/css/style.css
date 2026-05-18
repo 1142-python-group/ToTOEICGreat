@@ -265,7 +265,7 @@ button {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
-  margin-bottom: 28px;
+  margin-bottom: 5px;
 }
 
 .home-tags {
@@ -1597,4 +1597,13 @@ button {
   margin-bottom: 16px;
   max-height: 200px;
   overflow-y: auto;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }

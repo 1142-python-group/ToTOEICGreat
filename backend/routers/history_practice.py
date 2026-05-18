@@ -113,7 +113,7 @@ async def generate_history_practice(user_id: str = Depends(verify_token)):
             "question_id": qid, "group_id": None, "part": 5,
             "question_text": q["question_text"], "option_a": q["option_a"], "option_b": q["option_b"], 
             "option_c": q["option_c"], "option_d": q["option_d"], "correct_answer": q["correct_answer"], 
-            "explanation": q["explanation"], "translation": q["translation"], "vocabulary": q["vocabulary"], "skill_tag": q["skill_tag"]
+            "explanation": q["explanation"], "translation": q["translation"], "vocabulary": q["vocabulary"], "skill_tag": q.get("skill_tag")
         })
         
         # 準備給前端 (使用隊友定義的 model)
@@ -177,5 +177,5 @@ async def generate_history_practice(user_id: str = Depends(verify_token)):
     return QuizSession(
         session_id=session_id,
         questions=frontend_questions,
-        time_limit_seconds=900
+        time_limit_seconds=300
     )

@@ -316,15 +316,25 @@ const HomeView = {
           </label>
         </div>
 
-        <div class="home-btns" style="margin-top: 20px;">
+        <div class="home-btns" style="margin-top: 20px; display: flex; flex-direction: column; gap: 10px;">
           <button class="btn-primary" @click="startQuiz" :disabled="loading || (!includeListening && !includeVocab && !includeReading)">
             ▶ 開始模擬測驗
           </button>
-          <button class="btn-primary btn-lightblue" @click="$emit('start-history-practice')" :disabled="loading">
-            ▶ 客製化易錯測驗
-          </button>
+          <div style="border-top: 1px solid #eee; margin: 10px 0; padding-top: 15px;">
+            <div style="font-size: 0.9rem; color: #666; margin-bottom: 10px; display: flex; align-items: center; gap: 5px;">
+            </div>
+            <button class="btn-primary btn-lightblue" style="width: 100%;" @click="$emit('start-history-practice')" :disabled="loading">
+              ▶ 生成客製化易錯特訓卷
+            </button>
+          </div>
         </div>
-        <p v-if="error" style="color:red;margin-top:12px;font-size:14px">{{ error }}</p>
+        <div v-if="error" style="background: #fff5f5; border: 1px solid #feb2b2; color: #c53030; padding: 12px; border-radius: 8px; margin-top: 15px; font-size: 14px; display: flex; align-items: flex-start; gap: 10px;">
+          <span style="font-size: 18px;">⚠️</span>
+          <div>
+            <div style="font-weight: bold; margin-bottom: 3px;">載入失敗</div>
+            {{ error }}
+          </div>
+        </div>
       </div>
     </section>
   `
@@ -439,7 +449,7 @@ const ProfileView = {
           maintainAspectRatio: false,
           plugins: { legend: { display: false } },
           scales: {
-            y: { min: 0, max: 990 },
+            y: { min: 0, max: 100 },
             x: { grid: { display: false } }
           }
         }
@@ -492,19 +502,25 @@ const QuizView = {
     // 文章翻譯展開狀態
     const showArticleTranslation = ref(false)
     let timerInterval = null
-    let qStartTime = Date.now()
+    const endTime = Date.now() + props.session.time_limit_seconds * 1000;
 
     onMounted(() => {
       timerInterval = setInterval(() => {
-        secondsLeft.value--
-        const qid = currentQuestion.value.id
-        timeSpentPerQ[qid] = (timeSpentPerQ[qid] || 0) + 1
+        const now = Date.now();
+        const newSecondsLeft = Math.max(0, Math.ceil((endTime - now) / 1000));
+        
+        if (newSecondsLeft < secondsLeft.value) {
+          const qid = currentQuestion.value.id
+          timeSpentPerQ[qid] = (timeSpentPerQ[qid] || 0) + (secondsLeft.value - newSecondsLeft);
+        }
+        
+        secondsLeft.value = newSecondsLeft;
 
         if (secondsLeft.value <= 0) {
           clearInterval(timerInterval)
           doSubmit()
         }
-      }, 1000)
+      }, 500)
     })
 
     onUnmounted(() => clearInterval(timerInterval))
@@ -753,6 +769,16 @@ const ResultView = {
 
             <!-- 面板內容 -->
             <div class="result-body" v-show="openItems[qr.question_id]">
+
+              <!-- 聽力題音檔區塊 -->
+              <div v-if="qr.audio_url" class="audio-player-block" style="margin-bottom: 15px;">
+                <audio
+                  controls
+                  class="audio-player"
+                  :src="qr.audio_url"
+                  style="width: 100%; border-radius: 8px;"
+                ></audio>
+              </div>
 
               <!-- 【新增】閱讀題：在題目上方顯示原文 -->
               <div v-if="qr.article_text" class="result-article-block">
@@ -1114,6 +1140,24 @@ const RecordDetailView = {
                 ></audio>
               </div>
 
+              <!-- 【新增】閱讀題：顯示文章 -->
+              <div v-if="ans.questions.article" class="result-article-block">
+                <div class="result-article-header">
+                  <span class="result-article-type-badge">{{ ans.questions.article.article_type || 'Article' }}</span>
+                  <span class="result-article-label">閱讀原文</span>
+                </div>
+                <pre class="result-article-text">{{ ans.questions.article.article_text }}</pre>
+                <!-- 文章中文翻譯（可展開） -->
+                <div v-if="ans.questions.article.article_translation" class="quiz-article-translation-toggle">
+                  <button class="btn-translation-toggle" @click="ans.showTranslation = !ans.showTranslation">
+                    {{ ans.showTranslation ? '▲ 隱藏中文譯文' : '▼ 顯示中文譯文' }}
+                  </button>
+                  <div v-show="ans.showTranslation" class="quiz-article-translation-text">
+                    {{ ans.questions.article.article_translation }}
+                  </div>
+                </div>
+              </div>
+
               <p class="result-q-text">{{ ans.questions.question_text }}</p>
               
               <div class="result-options-grid" style="margin-top: 15px;">
@@ -1247,7 +1291,7 @@ const LeaderboardView = {
                 <span v-if="item.is_me" style="font-size: 0.75rem; background: #378ADD; color: white; padding: 2px 6px; border-radius: 10px; margin-left: 5px;">你</span>
               </div>
               <div style="text-align: right; font-size: 1.1rem; font-weight: bold; color: #333;">
-                {{ tab === 'score' ? (item.score > 100 ? Math.round(item.score / 990 * 100) : item.score) + '%' : item.total_questions_solved }}
+                {{ tab === 'score' ? (item.score > 1 ? Math.round(item.score / 990 * 100) : item.score*100) + '%' : item.total_questions_solved }}
               </div>
             </div>
           </div>
