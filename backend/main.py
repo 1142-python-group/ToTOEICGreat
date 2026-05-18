@@ -98,10 +98,11 @@ def load_all_questions() -> list:
 try:
     _all_questions = load_all_questions()
     vocalvulary_data = [q for q in _all_questions if q.get("part")==5]
-    reading_data = [q for q in _all_questions if q.get("part")==7]
+    reading_data = [q for q in _all_questions if q.get("part") in (6,7)]
     listening_data = [q for q in _all_questions if q.get("part") in (1,2,3,4)]
     questions_data = vocalvulary_data + reading_data
     print(f"✅ 題庫載入：單字 {len(vocalvulary_data)} 題 + 閱讀 {len(reading_data)} 題 + 聽力 {len(listening_data)} 題 = 共 {len(questions_data)} 題")
+    print(f"🎧 聽力分布：" + str({p: sum(1 for q in listening_data if q.get('part')==p) for p in [1,2,3,4]}))
 except Exception as e:
     print(f"⚠️  題庫載入失敗：{e}")
     vocalvulary_data = reading_data = listening_data = questions_data = []
@@ -134,7 +135,14 @@ def root():
 # ════════════════════════════════════════════════
 
 @app.get("/api/quiz/start", response_model=QuizSession)
-def start_quiz(count: int = 5):
+def start_quiz(
+    vocab_count: int = 5,        # 單字題數
+    listening_count: int = 3,    # 聽力題數
+    reading_groups: int = 1,     # 閱讀組數（Part 6+7 合計）
+    include_listening: bool = True,
+    include_vocab: bool = True,
+    include_reading: bool = True,
+    ):
     """
     抽題策略：
       - 單字題（group_id 為 None）：固定抽 count 題，隨機打亂順序排在前面
@@ -146,38 +154,73 @@ def start_quiz(count: int = 5):
     if not questions_data:
         raise HTTPException(503, detail="題庫未載入，請確認 Supabase 是否正常連線")
 
-    # 1. 分類
+    # # 1. 分類
+    # standalone = vocalvulary_data
+    # reading_groups: dict[str, list] = {}
+    # for q in reading_data:
+    #     gid = q.get("group_id")
+    #     if not gid:
+    #         continue
+    #     reading_groups.setdefault(gid, []).append(q)
+    # 1. 分類（Part 6 + Part 7 都算閱讀題）
     standalone = vocalvulary_data
-    reading_groups: dict[str, list] = {}
-    for q in reading_data:
+    reading_group_map: dict[str, list] = {}
+    for q in reading_data:   # reading_data 要包含 part 6
         gid = q.get("group_id")
         if not gid:
             continue
-        reading_groups.setdefault(gid, []).append(q)
+        reading_group_map.setdefault(gid, []).append(q)
 
+    # # 2. 抽單字題
+    # if len(standalone) < vocab_count:
+    #     raise HTTPException(400, detail=f"單字題不足，只有 {len(standalone)} 題")
+    # standalone_sampled = random.sample(standalone, count)
+    # random.shuffle(standalone_sampled)
+    # # 3. 抽聽力題（不計入單字題數量）
+    # LISTENING_COUNT = 3
+    # listening_sampled: list = []
+    # if listening_data and len(listening_data) >= LISTENING_COUNT:
+    #     listening_sampled = random.sample(listening_data, LISTENING_COUNT)
+    #     print(f"🎧 同時抽取了 {len(listening_sampled)} 題聽力題（不計入單字題數量）")
+    # # 4. 抽閱讀題（整組，不拆散）
+    # READING_GROUPS_PER_QUIZ = 1   # ← 想要幾組閱讀就改這裡
+    # reading_sampled: list = []
+    # if reading_groups:
+    #     chosen_ids = random.sample(
+    #         list(reading_groups.keys()),
+    #         min(READING_GROUPS_PER_QUIZ, len(reading_groups))
+    #     )
+    #     for gid in chosen_ids:
+    #         reading_sampled.extend(reading_groups[gid])
+
+    # sampled = listening_sampled + standalone_sampled + reading_sampled
     # 2. 抽單字題
-    if len(standalone) < count:
-        raise HTTPException(400, detail=f"單字題不足，只有 {len(standalone)} 題")
-    standalone_sampled = random.sample(standalone, count)
-    random.shuffle(standalone_sampled)
-    # 3. 抽聽力題（不計入單字題數量）
-    LISTENING_COUNT = 3
+    standalone_sampled: list = []
+    if include_vocab:
+        if len(standalone) < vocab_count:
+            raise HTTPException(400, detail=f"單字題不足，只有 {len(standalone)} 題")
+        standalone_sampled = random.sample(standalone, vocab_count)
+        random.shuffle(standalone_sampled)
+
+    # 3. 抽聽力題
     listening_sampled: list = []
-    if listening_data and len(listening_data) >= LISTENING_COUNT:
-        listening_sampled = random.sample(listening_data, LISTENING_COUNT)
-        print(f"🎧 同時抽取了 {len(listening_sampled)} 題聽力題（不計入單字題數量）")
-    # 4. 抽閱讀題（整組，不拆散）
-    READING_GROUPS_PER_QUIZ = 1   # ← 想要幾組閱讀就改這裡
+    if include_listening and listening_data:
+        actual_listening = min(listening_count, len(listening_data))
+        listening_sampled = random.sample(listening_data, actual_listening)
+
+    # 4. 抽閱讀題（Part 6 + Part 7 合併，整組不拆散）
     reading_sampled: list = []
-    if reading_groups:
+    if include_reading and reading_group_map:
         chosen_ids = random.sample(
-            list(reading_groups.keys()),
-            min(READING_GROUPS_PER_QUIZ, len(reading_groups))
+            list(reading_group_map.keys()),
+            min(reading_groups, len(reading_group_map))
         )
         for gid in chosen_ids:
-            reading_sampled.extend(reading_groups[gid])
+            reading_sampled.extend(reading_group_map[gid])
 
     sampled = listening_sampled + standalone_sampled + reading_sampled
+    if not sampled:
+        raise HTTPException(400, detail="未選擇任何題型，請至少選一種")
 
     # 5. 查對應 articles
     group_ids = list({q["group_id"] for q in sampled if q.get("group_id")})
@@ -440,18 +483,59 @@ def generate_practice(payload: PracticeRequest):
     question_id = payload.question_id
     if not questions_data:
         raise HTTPException(503, detail="題庫未載入")
-    original = [q for q in questions_data if str(q.get("question_id")) == question_id]
+    all_data = vocalvulary_data + reading_data + listening_data
+    original = [q for q in all_data if str(q.get("question_id")) == question_id]
     if not original:
         raise HTTPException(404, detail=f"找不到題目 {question_id}")
     tag = original[0].get("skill_tag")
-    same_tag = [q for q in questions_data if q.get("skill_tag") == tag and str(q.get("question_id")) != question_id]
-    if not same_tag:
-        raise HTTPException(404, detail="找不到相同考點的其他題目")
-    row = random.choice(same_tag)
+    part = original[0].get("part")
+    current_group = original[0].get("group_id")
+
+    # Part 3/4：同一對話有多題，改為抽另一組對話（不同 group_id）
+    if part in (3, 4):
+        # 找所有 Part 3/4 的 group_id，排除目前這組
+        other_groups: dict[str, list] = {}
+        for q in all_data:
+            if q.get("part") == part and q.get("group_id") and q.get("group_id") != current_group:
+                other_groups.setdefault(q["group_id"], []).append(q)
+        if not other_groups:
+            raise HTTPException(404, detail="找不到其他對話組可供練習")
+        chosen_gid = random.choice(list(other_groups.keys()))
+        group_questions = other_groups[chosen_gid]
+        # 取第一題作為代表（音檔相同）
+        row = group_questions[0]
+    else:
+        same_tag = [q for q in all_data if q.get("skill_tag") == tag and q.get("part") == part and str(q.get("question_id")) != question_id]
+        if not same_tag:
+            raise HTTPException(404, detail="找不到相同考點的其他題目")
+        row = random.choice(same_tag)
+    # 閱讀題：查對應文章
+    gid = row.get("group_id")
+    article = None
+    if gid:
+        try:
+            art_res = supabase.table("article").select("*").eq("group_id", gid).execute()
+            if art_res.data:
+                article = art_res.data[0]
+        except Exception as e:
+            print(f"WARNING practice article failed: {e}")
+    # 聽力題：組 audio_url
+    audio_path = row.get("audio_path")
+    audio_url = (
+        f"{SUPABASE_URL}/storage/v1/object/public/audio/{audio_path}"
+        if audio_path else None
+    )
     return {
-        "id":      str(row.get("question_id", "")),
-        "tag":     str(row.get("skill_tag", "")),
-        "text":    str(row.get("question_text", "")),
+        "id":                str(row.get("question_id", "")),
+        "tag":               str(row.get("skill_tag", "")),
+        "text":              str(row.get("question_text", "")),
+        "part":              row.get("part"),
+        "audio_url":         audio_url,
+        "correct_index":     letter_to_index(row.get("correct_answer", "A")),
+        "explanation":       str(row.get("explanation", "")),
+        "translation":       str(row.get("translation", "")),
+        "article_text":      article["article_text"] if article else None,
+        "article_type":      article["article_type"] if article else None,
         "options": [
             str(row.get("option_a", "")),
             str(row.get("option_b", "")),

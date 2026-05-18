@@ -1458,3 +1458,143 @@ button {
   font-size: 12px;
   color: #888;
 }
+.quiz-config-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 24px 0 8px;
+}
+
+.quiz-config-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 12px;
+  border-radius: 12px;
+  border: 2px solid var(--border);
+  background: var(--bg);
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+
+.quiz-config-item.active {
+  border-color: var(--blue-400);
+  background: var(--blue-50);
+}
+
+.quiz-config-icon { font-size: 24px; }
+
+.quiz-config-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.quiz-config-item.active .quiz-config-label {
+  color: var(--blue-600);
+}
+
+.quiz-config-num {
+  width: 52px;
+  text-align: center;
+  border: 1.5px solid var(--blue-400);
+  border-radius: 8px;
+  padding: 4px;
+  font-size: 16px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--blue-800);
+  background: white;
+}
+
+.quiz-config-off {
+  font-size: 12px;
+  color: var(--gray-400);
+}
+
+.practice-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+}
+
+.practice-modal {
+  background: white;
+  border-radius: 16px;
+  padding: 32px 28px;
+  max-width: 560px;
+  width: calc(100% - 48px);
+  position: relative;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.practice-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: #888;
+}
+
+.practice-modal-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #7F77DD;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+
+.practice-modal-tag {
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 8px;
+}
+
+.practice-modal-text {
+  font-size: 16px;
+  line-height: 1.7;
+  margin-bottom: 20px;
+  color: #1A1916;
+}
+
+.practice-result-block {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #dde3ec;
+}
+
+.practice-result-correct {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0F6E56;
+  margin-bottom: 4px;
+}
+
+.practice-result-wrong {
+  font-size: 15px;
+  font-weight: 700;
+  color: #A32D2D;
+  margin-bottom: 4px;
+}
+
+.practice-article-block {
+  background: #f8fafc;
+  border: 1px solid #dde3ec;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  max-height: 200px;
+  overflow-y: auto;
+}
