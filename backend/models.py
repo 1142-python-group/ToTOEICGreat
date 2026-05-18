@@ -61,6 +61,7 @@ class UserStats(BaseModel):
     username: str
     total_questions: int
     estimated_score: int
+    friend_rank: str
     avg_time_per_q: float
     score_history: list[dict]   # [{"month": "1月", "score": 580}, ...]
     radar_data: list[dict]      # [{"label": "文法", "value": 75}, ...]

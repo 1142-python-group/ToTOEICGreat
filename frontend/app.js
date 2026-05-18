@@ -289,12 +289,12 @@ const ProfileView = {
               <div class="stat-value">{{ userStats.estimated_score }}</div>
             </div>
             <div class="stat-card">
-              <div class="stat-label">平均單題作答時間</div>
+              <div class="stat-label">平均單次作答時間</div>
               <div class="stat-value">{{ userStats.avg_time_per_q.toFixed(0) }}<small> 秒</small></div>
             </div>
             <div class="stat-card">
               <div class="stat-label">好友排行</div>
-              <div class="stat-value">Top 3</div>
+              <div class="stat-value">{{ userStats.friend_rank }}</div>
             </div>
           </div>
 
@@ -360,7 +360,7 @@ const ProfileView = {
           maintainAspectRatio: false,
           plugins: { legend: { display: false } },
           scales: {
-            y: { min: 500, max: 990 },
+            y: { min: 0, max: 990 },
             x: { grid: { display: false } }
           }
         }
@@ -1163,7 +1163,7 @@ const App = {
     function showView(view, payload = null) {
       currentView.value = view
       state.showDropdown = false
-      if (view === "profile" && !state.userStats) {
+      if (view === "profile") {
         fetchUserStats()
       }
       if (view === "record-detail" && payload) {
@@ -1212,6 +1212,11 @@ const App = {
         
         const userId = session.user.id  // 用真實登入者的 id
         state.userStats = await api.getUserStats(userId)
+        const scoreLeaderboard = await api.getScoreLeaderboard("all_time")
+        const meInLeaderboard = scoreLeaderboard.find(item => item.is_me === true)
+        state.userStats.friend_rank = meInLeaderboard
+          ? `Top ${meInLeaderboard.rank} `
+          : "夯爆了"
       } catch (e) {
         console.error("無法取得使用者資料：", e)
       }
