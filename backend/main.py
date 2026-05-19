@@ -494,7 +494,7 @@ def generate_practice(payload: PracticeRequest):
     question_id = payload.question_id
     if not questions_data:
         raise HTTPException(503, detail="題庫未載入")
-    all_data = vocalvulary_data + reading_data + listening_data
+    all_data = questions_data + listening_data
     original = [q for q in all_data if str(q.get("question_id")) == question_id]
     if not original:
         raise HTTPException(404, detail=f"找不到題目 {question_id}")
