@@ -447,9 +447,23 @@ const ProfileView = {
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
+          plugins: { 
+            legend: { display: false }, 
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.parsed.y}%`
+              }
+            },
+          },
+          
           scales: {
-            y: { min: 0, max: 100 },
+            y: { 
+              min: 0, 
+              max: 100,
+              ticks: {
+                callback: (value) => `${value}%`   // ← 順手把 Y 軸刻度也加 %
+              },
+            },
             x: { grid: { display: false } }
           }
         }
@@ -459,20 +473,63 @@ const ProfileView = {
         type: "radar",
         data: {
           labels: stats.radar_data.map(d => d.label),
-          datasets: [{
-            data: stats.radar_data.map(d => d.value),
-            borderColor: "#BA7517",
-            backgroundColor: "rgba(186,117,23,0.12)",
-            borderWidth: 2,
-            pointRadius: 4
-          }]
+          datasets: [
+            // 1. 60% 及格線（畫在底層）
+            {
+              label: "及格線",
+              data: stats.radar_data.map(() => 60),
+              borderColor: "rgba(220, 53, 69, 0.6)",     // 紅色虛線
+              backgroundColor: "rgba(220, 53, 69, 0.04)",
+              borderWidth: 1.5,
+              borderDash: [5, 5],                         // 虛線樣式
+              pointRadius: 0,                             // 不顯示節點
+              pointHoverRadius: 0,
+              fill: false,
+              order: 2
+            },
+            // 2. 使用者實際數據（畫在上層）
+            {
+              label: "你的能力",
+              data: stats.radar_data.map(d => d.value),
+              borderColor: "#BA7517",
+              backgroundColor: "rgba(186,117,23,0.12)",
+              borderWidth: 2,
+              pointRadius: 4,
+              pointBackgroundColor: "#BA7517",
+              order: 1
+            }
+          ]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
+          plugins: {
+            legend: {
+              display: true,                              // 顯示圖例
+              position: "bottom",
+              labels: {
+                font: { size: 12 },
+                boxWidth: 20,
+                padding: 12
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.parsed.r}%`
+              }
+            }
+          },
           scales: {
-            r: { min: 0, max: 100, ticks: { display: false } }
+            r: {
+              min: 0,
+              max: 100,
+              ticks: {
+                display: false,
+                stepSize: 20
+              },
+              grid: { color: "rgba(0,0,0,0.08)" },
+              angleLines: { color: "rgba(0,0,0,0.08)" }
+            }
           }
         }
       })
