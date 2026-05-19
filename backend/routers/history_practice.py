@@ -118,7 +118,7 @@ async def generate_history_practice(user_id: str = Depends(verify_token)):
         
         # 準備給前端 (使用隊友定義的 model)
         frontend_questions.append(Question(
-            id=qid, tag=q["skill_tag"], text=q["question_text"],
+            id=qid, tag=q.get("skill_tag"), text=q["question_text"],
             options=[q["option_a"], q["option_b"], q["option_c"], q["option_d"]]
         ))
 
@@ -139,11 +139,11 @@ async def generate_history_practice(user_id: str = Depends(verify_token)):
             "question_id": qid, "group_id": group_id, "part": 7,
             "question_text": q["question_text"], "option_a": q["option_a"], "option_b": q["option_b"], 
             "option_c": q["option_c"], "option_d": q["option_d"], "correct_answer": q["correct_answer"], 
-            "explanation": q["explanation"], "translation": q["translation"], "vocabulary": "", "skill_tag": q["skill_tag"]
+            "explanation": q["explanation"], "translation": q["translation"], "vocabulary": "", "skill_tag": q.get("skill_tag")
         })
 
         frontend_questions.append(Question(
-            id=qid, tag=q["skill_tag"], text=q["question_text"],
+            id=qid, tag=q.get("skill_tag"), text=q["question_text"],
             options=[q["option_a"], q["option_b"], q["option_c"], q["option_d"]],
             article_text=p7.get("article_text"), # 綁定文章內容給前端渲染
             article_type=p7.get("article_type")
