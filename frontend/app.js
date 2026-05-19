@@ -324,7 +324,7 @@ const HomeView = {
             <div style="font-size: 0.9rem; color: #666; margin-bottom: 10px; display: flex; align-items: center; gap: 5px;">
             </div>
             <button class="btn-primary btn-lightblue" style="width: 100%;" @click="$emit('start-history-practice')" :disabled="loading">
-              ▶ 生成客製化易錯特訓卷
+              ▶ 生成客製化易錯測驗
             </button>
           </div>
         </div>
@@ -1446,7 +1446,7 @@ const App = {
       state.error = ""
 
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("生成時間過久，請稍後再試")), 30000)
+        setTimeout(() => reject(new Error("生成時間過久，請稍後再試")), 90000)
       );
 
       try {
