@@ -10,7 +10,7 @@ class LeaderboardScoreEntry(BaseModel):
     rank: int
     user_id: str
     username: Optional[str]
-    score: int
+    score: float
     is_me: bool
 
 class LeaderboardDiligenceEntry(BaseModel):

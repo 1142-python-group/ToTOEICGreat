@@ -145,8 +145,24 @@ async function fetchWithAuth(endpoint, options = {}) {
 }
 
 const api = {
-  async startQuiz(count = 5) {
-    const res = await fetch(`${API_BASE}/quiz/start?count=${count}`)
+  async startQuiz(params = {}) {
+    const {
+      vocabCount = 5,
+      listeningCount = 3,
+      readingGroups = 1,
+      includeListening = true,
+      includeVocab = true,
+      includeReading = true,
+    } = params
+    const qs = new URLSearchParams({
+      vocab_count: vocabCount,
+      listening_count: listeningCount,
+      reading_groups: readingGroups,
+      include_listening: includeListening,
+      include_vocab: includeVocab,
+      include_reading: includeReading,
+    })
+    const res = await fetch(`${API_BASE}/quiz/start?${qs}`)
     if (!res.ok) throw new Error("無法取得題目，請確認後端是否正在運作")
     return res.json()
   },
@@ -163,7 +179,7 @@ const api = {
     })
   },
 
-  async getUserStats(userId = "user_001") {
+  async getUserStats(userId) {
     const res = await fetch(`${API_BASE}/user/${userId}/stats`)
     if (!res.ok) throw new Error("無法取得使用者資料")
     return res.json()
@@ -236,48 +252,92 @@ const { createApp, ref, reactive, computed, onMounted, onUnmounted, watch, nextT
 // ── 首頁元件 ──────────────────────────────────────────────
 const HomeView = {
   emits: ["start-quiz", "start-history-practice", "go-profile", "go-leaderboard"],
+  props: {
+    loading: { type: Boolean, default: false },
+    error: { type: String, default: "" }
+  },
+  setup(props, { emit }) {
+    const vocabCount = ref(5)
+    const listeningCount = ref(3)
+    const readingGroupCount = ref(1)
+    const includeListening = ref(true)
+    const includeVocab = ref(true)
+    const includeReading = ref(true)
+
+    function startQuiz() {
+      emit("start-quiz", {
+        vocabCount: vocabCount.value,
+        listeningCount: listeningCount.value,
+        readingGroups: readingGroupCount.value,
+        includeListening: includeListening.value,
+        includeVocab: includeVocab.value,
+        includeReading: includeReading.value,
+      })
+    }
+
+    return { vocabCount, listeningCount, readingGroupCount, includeListening, includeVocab, includeReading, startQuiz }
+  },
   template: `
     <section class="view home-view">
       <div class="home-bg-watermark">益</div>
-      <div class="home-card" style="position: relative;">
-        <!-- 載入中遮罩 -->
-        <div v-if="loading" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; border-radius: 12px; backdrop-filter: blur(3px);">
-          <style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
+      <div class="home-card" style="position: relative; max-width: 620px;">
+        <div v-if="loading" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; border-radius: 12px;">
           <div style="width: 40px; height: 40px; border: 4px solid #378ADD; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px;"></div>
-          <div style="color: #378ADD; font-weight: bold; font-size: 1.1rem;">AI 正在為您處理...</div>
-          <div style="color: #666; font-size: 0.9rem; margin-top: 5px;">請稍候，這可能需要一點時間</div>
+          <div style="color: #378ADD; font-weight: bold;">載入題目中...</div>
         </div>
 
         <div class="home-eyebrow">★ AI 驅動練習</div>
         <h1 class="home-title">準備好突破你的<br>多益極限了嗎？</h1>
-        <p class="home-subtitle">系統已根據你的歷史弱點，為你精選本次個人化試題。</p>
-        <div class="home-btns" style="flex-wrap: wrap; gap: 10px; justify-content: center;">
-          <style>
-            .btn-lightblue { background-color: #60A5FA !important; border-color: #60A5FA !important; }
-            .btn-lightblue:hover:not(:disabled) { background-color: #3B82F6 !important; border-color: #3B82F6 !important; }
-          </style>
-          <button class="btn-primary" @click="$emit('start-quiz')" :disabled="loading">
+
+        <!-- 題型設定 -->
+        <div class="quiz-config-grid">
+          <label class="quiz-config-item" :class="{ active: includeListening }">
+            <input type="checkbox" v-model="includeListening" style="display:none">
+            <div class="quiz-config-icon">🎧</div>
+            <div class="quiz-config-label">聽力題</div>
+            <input v-if="includeListening" type="number" v-model.number="listeningCount" min="1" max="10" class="quiz-config-num" @click.stop>
+            <div v-else class="quiz-config-off">關閉</div>
+          </label>
+
+          <label class="quiz-config-item" :class="{ active: includeVocab }">
+            <input type="checkbox" v-model="includeVocab" style="display:none">
+            <div class="quiz-config-icon">📝</div>
+            <div class="quiz-config-label">單字題</div>
+            <input v-if="includeVocab" type="number" v-model.number="vocabCount" min="1" max="20" class="quiz-config-num" @click.stop>
+            <div v-else class="quiz-config-off">關閉</div>
+          </label>
+
+          <label class="quiz-config-item" :class="{ active: includeReading }">
+            <input type="checkbox" v-model="includeReading" style="display:none">
+            <div class="quiz-config-icon">📖</div>
+            <div class="quiz-config-label">閱讀題</div>
+            <input v-if="includeReading" type="number" v-model.number="readingGroupCount" min="1" max="5" class="quiz-config-num" @click.stop>
+            <div v-else class="quiz-config-off">關閉</div>
+          </label>
+        </div>
+
+        <div class="home-btns" style="margin-top: 20px; display: flex; flex-direction: column; gap: 10px;">
+          <button class="btn-primary" @click="startQuiz" :disabled="loading || (!includeListening && !includeVocab && !includeReading)">
             ▶ 開始模擬測驗
           </button>
-          <button class="btn-primary btn-lightblue" @click="$emit('start-history-practice')" :disabled="loading">
-            ▶ 開始客製化易錯測驗
-          </button>
-          <button class="btn-secondary" @click="$emit('go-profile')" :disabled="loading">查看個人分析</button>
-          <button class="btn-outline" @click="$emit('go-leaderboard')" :disabled="loading">查看排行榜</button>
+          <div style="border-top: 1px solid #eee; margin: 10px 0; padding-top: 15px;">
+            <div style="font-size: 0.9rem; color: #666; margin-bottom: 10px; display: flex; align-items: center; gap: 5px;">
+            </div>
+            <button class="btn-primary btn-lightblue" style="width: 100%;" @click="$emit('start-history-practice')" :disabled="loading">
+              ▶ 生成客製化易錯特訓卷
+            </button>
+          </div>
         </div>
-        <div class="home-tags">
-          <span class="home-tag">5 題</span>
-          <span class="home-tag">限時 15 分鐘</span>
-          <span class="home-tag">AI 解析啟用</span>
+        <div v-if="error" style="background: #fff5f5; border: 1px solid #feb2b2; color: #c53030; padding: 12px; border-radius: 8px; margin-top: 15px; font-size: 14px; display: flex; align-items: flex-start; gap: 10px;">
+          <span style="font-size: 18px;">⚠️</span>
+          <div>
+            <div style="font-weight: bold; margin-bottom: 3px;">載入失敗</div>
+            {{ error }}
+          </div>
         </div>
-        <p v-if="error" style="color:red;margin-top:12px;font-size:14px">{{ error }}</p>
       </div>
     </section>
-  `,
-  props: {
-    loading: { type: Boolean, default: false },
-    error: { type: String, default: "" }
-  }
+  `
 }
 
 // ── 個人儀表板元件 ─────────────────────────────────────────
@@ -297,7 +357,9 @@ const ProfileView = {
 
         <template v-else>
           <div class="profile-header-card">
-            <div class="profile-big-avatar">黃</div>
+            <div class="profile-big-avatar">
+              {{ userStats.username.charAt(0) }}
+            </div>
             <div>
               <div class="profile-name">{{ userStats.username }}</div>
               <div class="profile-meta">總作答題數：{{ userStats.total_questions }} 題</div>
@@ -316,12 +378,12 @@ const ProfileView = {
               <div class="stat-value">{{ userStats.estimated_score > 100 ? Math.round(userStats.estimated_score / 990 * 100) : userStats.estimated_score }}<small>%</small></div>
             </div>
             <div class="stat-card">
-              <div class="stat-label">平均單題作答時間</div>
+              <div class="stat-label">平均單次作答時間</div>
               <div class="stat-value">{{ userStats.avg_time_per_q.toFixed(0) }}<small> 秒</small></div>
             </div>
             <div class="stat-card">
               <div class="stat-label">好友排行</div>
-              <div class="stat-value">Top 3</div>
+              <div class="stat-value">{{ userStats.friend_rank }}</div>
             </div>
           </div>
 
@@ -440,19 +502,25 @@ const QuizView = {
     // 文章翻譯展開狀態
     const showArticleTranslation = ref(false)
     let timerInterval = null
-    let qStartTime = Date.now()
+    const endTime = Date.now() + props.session.time_limit_seconds * 1000;
 
     onMounted(() => {
       timerInterval = setInterval(() => {
-        secondsLeft.value--
-        const qid = currentQuestion.value.id
-        timeSpentPerQ[qid] = (timeSpentPerQ[qid] || 0) + 1
+        const now = Date.now();
+        const newSecondsLeft = Math.max(0, Math.ceil((endTime - now) / 1000));
+        
+        if (newSecondsLeft < secondsLeft.value) {
+          const qid = currentQuestion.value.id
+          timeSpentPerQ[qid] = (timeSpentPerQ[qid] || 0) + (secondsLeft.value - newSecondsLeft);
+        }
+        
+        secondsLeft.value = newSecondsLeft;
 
         if (secondsLeft.value <= 0) {
           clearInterval(timerInterval)
           doSubmit()
         }
-      }, 1000)
+      }, 500)
     })
 
     onUnmounted(() => clearInterval(timerInterval))
@@ -620,12 +688,18 @@ const ResultView = {
       showArticleTranslation[id] = !showArticleTranslation[id]
     }
 
+    const practiceQuestion = ref(null)
+    const practiceLoading = ref(false)
+
     async function requestPractice(questionId) {
+      practiceLoading.value = true
       try {
         const data = await api.generatePractice(questionId)
-        alert(`AI 生成的練習題：\n${data.text}`)
+        practiceQuestion.value = { ...data, selectedAnswer: null }
       } catch (e) {
         alert("生成失敗，請稍後再試")
+      } finally {
+        practiceLoading.value = false
       }
     }
 
@@ -634,7 +708,8 @@ const ResultView = {
     const timeDisplay = `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")}`
     const passed = props.result.score >= 60
 
-    return { openItems, toggleItem, showArticleTranslation, toggleArticleTranslation, requestPractice, optLetters, timeDisplay, passed }
+    return { openItems, toggleItem, showArticleTranslation, toggleArticleTranslation,
+             requestPractice, practiceQuestion, practiceLoading, optLetters, timeDisplay, passed }
   },
   template: `
     <section class="view">
@@ -695,6 +770,16 @@ const ResultView = {
             <!-- 面板內容 -->
             <div class="result-body" v-show="openItems[qr.question_id]">
 
+              <!-- 聽力題音檔區塊 -->
+              <div v-if="qr.audio_url" class="audio-player-block" style="margin-bottom: 15px;">
+                <audio
+                  controls
+                  class="audio-player"
+                  :src="qr.audio_url"
+                  style="width: 100%; border-radius: 8px;"
+                ></audio>
+              </div>
+
               <!-- 【新增】閱讀題：在題目上方顯示原文 -->
               <div v-if="qr.article_text" class="result-article-block">
                 <div class="result-article-header">
@@ -750,9 +835,65 @@ const ResultView = {
                 v-if="!qr.is_correct"
                 class="btn-ai-practice"
                 @click="requestPractice(qr.question_id)"
+                :disabled="practiceLoading"
               >
-                ★ 產生類似考點練習題
+                {{ practiceLoading ? '生成中...' : '★ 產生類似考點練習題' }}
               </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 練習題彈窗 -->
+        <div v-if="practiceQuestion" class="practice-modal-backdrop" @click.self="practiceQuestion = null">
+          <div class="practice-modal">
+            <button class="practice-modal-close" @click="practiceQuestion = null">✕</button>
+            <div class="practice-modal-label">★ AI 生成練習題</div>
+            <p class="practice-modal-tag">{{ practiceQuestion.tag }}</p>
+
+            <!-- 閱讀題：顯示文章 -->
+            <div v-if="practiceQuestion.article_text" class="practice-article-block">
+              <div class="quiz-article-type-badge">{{ practiceQuestion.article_type || 'Article' }}</div>
+              <pre class="quiz-article-text">{{ practiceQuestion.article_text }}</pre>
+            </div>
+
+            <!-- 聽力題：播放器 -->
+            <div v-if="practiceQuestion.audio_url" class="audio-player-block" style="margin-bottom: 16px;">
+              <div class="audio-play-hint">🎧 請播放音檔後作答</div>
+              <audio :key="practiceQuestion.id" controls controlsList="nodownload"
+                class="audio-player" :src="practiceQuestion.audio_url"></audio>
+            </div>
+            <!-- 題目文字（Part 2 沒有文字所以不顯示，其他都顯示） -->
+            <p v-if="practiceQuestion.text && practiceQuestion.text.trim()" class="practice-modal-text">{{ practiceQuestion.text }}</p>
+
+            <div class="option-list">
+              <button
+                v-for="(opt, i) in practiceQuestion.options"
+                :key="i"
+                v-show="!(practiceQuestion.part === 2 && i === 3)"
+                class="option-btn"
+                :class="{
+                  selected: practiceQuestion.selectedAnswer === i,
+                  'correct-highlight': practiceQuestion.selectedAnswer !== null && i === practiceQuestion.correct_index,
+                  'wrong-highlight': practiceQuestion.selectedAnswer !== null && i === practiceQuestion.selectedAnswer && practiceQuestion.selectedAnswer !== practiceQuestion.correct_index
+                }"
+                @click="practiceQuestion.selectedAnswer === null && (practiceQuestion.selectedAnswer = i)"
+              >
+                <span class="option-letter">{{ ['A','B','C','D'][i] }}</span>
+                <span>{{ opt }}</span>
+              </button>
+            </div>
+
+            <!-- 選完後顯示解析 -->
+            <div v-if="practiceQuestion.selectedAnswer !== null" class="practice-result-block">
+              <div :class="practiceQuestion.selectedAnswer === practiceQuestion.correct_index ? 'practice-result-correct' : 'practice-result-wrong'">
+                {{ practiceQuestion.selectedAnswer === practiceQuestion.correct_index ? '✓ 答對了！' : '✗ 答錯了，正確答案是 ' + ['A','B','C','D'][practiceQuestion.correct_index] }}
+              </div>
+              <div v-if="practiceQuestion.explanation" style="margin-top: 12px; font-size: 14px; line-height: 1.7; color: #2d3748;">
+                {{ practiceQuestion.explanation }}
+              </div>
+              <div v-if="practiceQuestion.translation" style="margin-top: 8px; font-size: 13px; color: #666;">
+                <strong>中文翻譯：</strong>{{ practiceQuestion.translation }}
+              </div>
             </div>
           </div>
         </div>
@@ -999,6 +1140,24 @@ const RecordDetailView = {
                 ></audio>
               </div>
 
+              <!-- 【新增】閱讀題：顯示文章 -->
+              <div v-if="ans.questions.article" class="result-article-block">
+                <div class="result-article-header">
+                  <span class="result-article-type-badge">{{ ans.questions.article.article_type || 'Article' }}</span>
+                  <span class="result-article-label">閱讀原文</span>
+                </div>
+                <pre class="result-article-text">{{ ans.questions.article.article_text }}</pre>
+                <!-- 文章中文翻譯（可展開） -->
+                <div v-if="ans.questions.article.article_translation" class="quiz-article-translation-toggle">
+                  <button class="btn-translation-toggle" @click="ans.showTranslation = !ans.showTranslation">
+                    {{ ans.showTranslation ? '▲ 隱藏中文譯文' : '▼ 顯示中文譯文' }}
+                  </button>
+                  <div v-show="ans.showTranslation" class="quiz-article-translation-text">
+                    {{ ans.questions.article.article_translation }}
+                  </div>
+                </div>
+              </div>
+
               <p class="result-q-text">{{ ans.questions.question_text }}</p>
               
               <div class="result-options-grid" style="margin-top: 15px;">
@@ -1132,7 +1291,7 @@ const LeaderboardView = {
                 <span v-if="item.is_me" style="font-size: 0.75rem; background: #378ADD; color: white; padding: 2px 6px; border-radius: 10px; margin-left: 5px;">你</span>
               </div>
               <div style="text-align: right; font-size: 1.1rem; font-weight: bold; color: #333;">
-                {{ tab === 'score' ? (item.score > 100 ? Math.round(item.score / 990 * 100) : item.score) + '%' : item.total_questions_solved }}
+                {{ tab === 'score' ? (item.score > 1 ? Math.round(item.score / 990 * 100) : item.score*100) + '%' : item.total_questions_solved }}
               </div>
             </div>
           </div>
@@ -1210,7 +1369,7 @@ const App = {
     function showView(view, payload = null) {
       currentView.value = view
       state.showDropdown = false
-      if (view === "profile" && !state.userStats) {
+      if (view === "profile") {
         fetchUserStats()
       }
       if (view === "record-detail" && payload) {
@@ -1254,17 +1413,26 @@ const App = {
 
     async function fetchUserStats() {
       try {
-        state.userStats = await api.getUserStats("user_001")
+        const session = await getSession()
+        if (!session) return
+        
+        const userId = session.user.id  // 用真實登入者的 id
+        state.userStats = await api.getUserStats(userId)
+        const scoreLeaderboard = await api.getScoreLeaderboard("all_time")
+        const meInLeaderboard = scoreLeaderboard.find(item => item.is_me === true)
+        state.userStats.friend_rank = meInLeaderboard
+          ? `Top ${meInLeaderboard.rank} `
+          : "夯爆了"
       } catch (e) {
         console.error("無法取得使用者資料：", e)
       }
     }
 
-    async function startQuiz() {
+    async function startQuiz(quizConfig = {}) {
       state.loading = true
       state.error = ""
       try {
-        state.quizSession = await api.startQuiz(5)
+        state.quizSession = await api.startQuiz(quizConfig)
         showView("quiz")
       } catch (e) {
         state.error = e.message
