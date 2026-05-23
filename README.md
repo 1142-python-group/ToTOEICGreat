@@ -1,121 +1,118 @@
- # ToTOEICGreat - 數位化 TOEIC 學習平台
+# ToTOEICGreat - 多多益善：AI 驅動的多益數位化學習平台
 
-這是一個基於 Python FastAPI 和 Vue.js 的現代化線上測驗平台，旨在提供沉浸式的多益（TOEIC）模擬測驗體驗。平台整合了 AI 助教、個人化學習分析與社群互動功能，幫助使用者有效提升英文能力。
+這是一個結合了 **FastAPI**、**Vue 3** 與 **Gemini AI** 的現代化多益（TOEIC）學習與模擬測驗平台。本專案旨在提供全方位的多益備考體驗，從 AI 生成題目、聽力語音合成，到個人化弱點分析與社群排行榜，幫助使用者精準提升英語實力。
 
-## 🚀 系統架構總覽
+---
 
-本專案採用前後端分離的架構設計，清晰劃分職責，便於維護與擴展。
+## 🌟 核心特色
+
+1.  **AI 命題與解析**：
+    *   利用 **Gemini 2.5 Flash** 結合 **RAG (Retrieval-Augmented Generation)** 技術，參考真實考題生成高品質模擬題。
+    *   每一道題目皆附帶 AI 生成的詳細解析、全文翻譯及重點單字。
+2.  **沉浸式聽力體驗**：
+    *   使用 **Edge-TTS** 模擬多國口音（美、英、澳、加），提供高品質的聽力試題音檔。
+3.  **個人化弱點分析**：
+    *   **雷達圖分析**：將作答紀錄分為「文法概念」、「單字運用」、「聽力理解」、「閱讀理解」四大維度。
+    *   **進度追蹤**：視覺化展示歷史成績折線圖與預估多益分數。
+4.  **AI 錯題練習**：
+    *   系統能針對使用者的錯題，即時從題庫中檢索出相同考點的類似題，進行加強練習。
+5.  **社群互動系統**：
+    *   透過好友代碼建立連結，即時查看好友排行榜，互相激勵。
+
+---
+
+## 🏗️ 系統架構
 
 ### 1. 後端服務 (FastAPI)
-基於 Python 3.11+ 開發，提供 RESTful API 介面及安全的認證機制。
-
-* **技術栈**:
-    * **框架**: [FastAPI](https://fastapi.tiangolo.com/) (`main.py`)
-    * **資料庫**: [Supabase](https://supabase.com/) (PostgreSQL)
-    * **認證**: JWT Token (通過 Supabase Auth 整合)
-    * **AI 整合**: [LLM API](https://github.com/Eric-1107/ToTOEICGreat/blob/main/backend/routers/ai_service/ai_assistant.py)
-* **核心功能**:
-    * **測驗系統**: 提供「全真模考」與「自訂練習」模式，支援隨機出題。
-    * **成績分析**: 自動生成聽力與閱讀分數（基於正確題數）。
-    * **進度追蹤**: 記錄錯題與挑戰題，用於後續複習。
-    * **排行榜**: 支援「分數」與「勤勉度」（完成題數）兩種排行榜機制。
+*   **API 框架**：FastAPI
+*   **資料庫**：Supabase (PostgreSQL)
+*   **向量資料庫**：ChromaDB (用於 RAG 題目生成)
+*   **AI 引擎**：Google Gemini API
+*   **身分驗證**：Supabase Auth (JWT)
 
 ### 2. 前端介面 (Vue 3)
-基於 Vue 3 開發的單頁應用（SPA），提供流暢的互動體驗。
+*   **核心框架**：Vue 3 (CDN 版本)
+*   **圖表庫**：Chart.js (用於雷達圖與折線圖)
+*   **樣式**：Vanilla CSS
+*   **通訊**：原生 Fetch API
 
-* **技術栈**:
-    * **框架**: Vue 3 (`frontend/`)
-    * **狀態管理**: Vue 3 Reactivity API
-    * **API 整合**: 原生 `fetch` 搭配 `async/await`
-* **核心功能**:
-    * **多頁面切換**:
-        * **首頁**: 測驗功能入口與個人化數據概覽。
-        * **好友系統**: 透過代碼新增好友、處理邀請，並可與好友進行排名對比。
-        * **作答紀錄**: 完整的歷史紀錄列表，支援跳轉至單次測驗的「作答詳情」。
-        * **排行榜**: 即時查看分數與勤勉度排行榜，支援週/月/總體時間切換。
-        * **作答介面**: 整合聽力與閱讀試題的沈浸式互動介面。
-    * **AI 互動與錯題管理**:
-        * **錯題本詳情**: 檢視題目、選項、正確答案與 AI 解析。
-        * **狀態標記**: 可將錯題標記為「需要複習」、「已複習」或「已學會」。
-        * **自動出題**: 根據錯題生成相似題型（開發中）。
+### 3. 資料處理流水線 (Pre-processing)
+*   **聽力生成**：`generate_audio.py` 透過 Edge-TTS 批量轉換 CSV 腳本為 MP3。
+*   **題目研發**：`ToeicLLM.py` 結合 ChromaDB 向量檢索，自動產出具備多益難度的 Part 5/6/7 試題。
 
 ---
 
-## ⚙️ 環境建置與執行教學
+## 📂 專案結構與模組說明
 
-### 必備環境
-* Python 3.8+
-* 現代化瀏覽器 (支援 Vue 3)
-* Supabase 帳號（用於資料儲存與認證）
+```
+toToeicGreat/
+├── backend/
+│   ├── main.py             # 主程式：路由註冊與測驗邏輯
+│   ├── database.py         # Supabase 用戶端初始化
+│   ├── models.py           # Pydantic 資料模型定義
+│   ├── routers/            # 模組化路由
+│   │   ├── auth.py         # 用戶認證
+│   │   ├── exams.py        # 測驗紀錄管理
+│   │   ├── quiz.py         # 核心出題逻辑
+│   │   ├── friends.py      # 好友與排行榜
+│   │   └── history_practice.py # AI 弱點加強練習
+│   ├── listening_questions/ # 聽力前處理
+│   │   ├── generate_audio.py # TTS 語音合成
+│   │   └── upload_supabase.py # 音檔與資料上傳
+│   └── reading_questions/   # 閱讀前處理
+│       ├── build_vectordb.py # 建置 ChromaDB
+│       ├── ToeicLLM.py       # AI 命題系統 (RAG)
+│       └── upload_articles.py # 閱讀文章上傳
+├── frontend/
+│   ├── index.html          # SPA 入口頁面
+│   ├── app.js              # Vue 邏輯與介面管理
+│   ├── auth.js             # 登入與權限檢查
+│   └── css/style.css       # 系統全局樣式
+└── testing/                # 自動化測試腳本
+```
 
-### 後端設定 (FastAPI)
+---
 
-1.  **Clone 專案**
+## 📊 資料結構 (Database Schema)
+
+*   **`users`**: 儲存使用者帳號資訊與個人設定。
+*   **`questions`**: 核心題庫，包含 Part 2、Part 3、Part 5、Part 6、Part -7、題目文字、選項、正確答案、AI 解析、翻譯、單字及音檔路徑。
+*   **`article`**: 儲存 Part 6 與 Part 7 的閱讀文章內容及其翻譯。
+*   **`exam_attempts`**: 每次完整測驗的總結紀錄（分數、正確率、總用時）。
+*   **`answer_records`**: 每道題目的詳細作答情況（使用者答案、是否正確、作答秒數）。
+*   **`friendships`**: 好友關係與邀請狀態。
+
+---
+
+## ⚙️ 環境建置與使用方式
+
+### 1. 環境設定
+在 `backend/` 目錄下建立 `.env` 檔案：
+```ini
+SUPABASE_URL=your_supabase_url
+SUPABASE_SECRET_KEY=your_supabase_anon_key
+GEMINI_API_KEY=your_google_gemini_api_key
+```
+
+### 2. 前處理 (Data Preparation)
+在使用平台前，需先填充題庫：
+1.  **生成音檔**：執行 `python backend/listening_questions/generate_audio.py`。
+2.  **上傳資料**：執行 `python backend/listening_questions/upload_supabase.py` 及相關閱讀題上傳腳本。
+3.  **建置向量庫**：執行 `python backend/reading_questions/build_vectordb.py` 以便後續 AI 命題使用。
+
+### 3. 啟動服務
+1.  **啟動後端**：
     ```bash
-    git clone https://github.com/Eric-1107/ToTOEICGreat.git
-    cd ToTOEICGreat/backend
+    cd backend
+    pip install -r requirements.txt
+    uvicorn main:app --reload
     ```
-
-2.  **安裝依賴**
+2.  **啟動前端**：
+    直接開啟 `frontend/index.html` 或使用靜態伺服器：
     ```bash
-    pip install fastapi uvicorn supabase python-dotenv
-    ```
-
-3.  **環境變數**
-    建立 `.env` 檔案，並填入您的 Supabase 連線資訊：
-    ```ini
-    SUPABASE_URL=您的_SUPABASE_URL
-    SUPABASE_SECRET_KEY=您的_SUPABASE_SECRET_KEY
-    ```
-
-4.  **執行後端**
-    ```bash
-    uvicorn main:app --reload --host [IP_ADDRESS] --port 8000
-    ```
-
-### 前端設定 (Vue 3)
-
-1.  **進入前端目錄**
-    ```bash
-    cd ../frontend
-    ```
-
-2.  **啟動開發伺服器**
-    ```bash
+    cd frontend
     python -m http.server 3000
     ```
-    預設會開啟瀏覽器 `http://localhost:3000`
 
 ---
-
-## 📂 專案結構說明
-
-```
-ToTOEICGreat/
-├── backend/                # FastAPI 後端服務
-│   ├── main.py             # API 入口與全局路由設定
-│   ├── routers/            # 業務模組化路由
-│   │   ├── account_service/  # 帳號認證與 JWT 驗證 (Supabase)
-│   │   ├── friendship_service/ # 好友系統與邀請機制
-│   │   ├── leaderboard_service/ # 排行榜 (分數/勤勉度)
-│   │   ├── history_practice/ # 生成個人化考題
-│   │   └── record_services/  # 作答紀錄與錯題本管理
-│   ├── questions.csv       # 靜態題庫資料
-│   └── .env                # 環境變數 (需自行建立)
-│
-└── frontend/               # 前端網頁介面 (Vue 3 CDN 版)
-    ├── index.html          # 主頁面入口
-    ├── app.js              # Vue 邏輯與 API 請求封裝
-    ├── auth.js             # Supabase Auth 認證邏輯
-    └── css/
-        └── style.css       # 系統樣式表
-```
-
----
-
-## 🤝 貢獻指南
-
-歡迎對本專案提出 Issues 或 Pull Requests。在提交代碼前，請確保已遵循以下規範：
-1.  符合 PEP 8 程式碼風格。
-2.  更新相關的 `README.md` 文件（如有必要）。
-3.  前端變更應先在開發伺服器上測試無誤。
+*本專案為「程式設計-Python」課程期末專題。*
