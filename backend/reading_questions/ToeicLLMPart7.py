@@ -41,8 +41,8 @@ API_KEYS = [key for key in [env_key_1, env_key_2] if key]
 if not API_KEYS:
     print("⚠️ 警告：未從環境變數偵測到 API Key。")
     API_KEYS = [
-        "AIzaSyDAcOkm01g3uJSpoDZGsEFtlvazUCWeN0Y",
-        "AIzaSyBwvdGKuvy3AvzZq1Iqg4Jc19rUTt6GABg"
+        "填入你的api key1",
+        "填入你的api key2"
     ]
 
 article_columns = ["group_id", "article_type", "article_text", "article_translation", "vocabulary"]
