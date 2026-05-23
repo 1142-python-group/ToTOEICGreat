@@ -30,8 +30,8 @@ API_KEYS = [key for key in [env_key_1, env_key_2] if key]
 if not API_KEYS:
     print("⚠️ 警告：未從環境變數偵測到 API Key。")
     API_KEYS = [
-        "AIzaSyDi3Uds-CnPAlzL7h6hDEmGpZnzflo_pQI",
-        "YOUR_API_KEY_2_HERE"
+        "填入你的api key1",
+        "填入你的api key2"
     ]
 
 # 嚴格對齊你提供的 CSV 格式
