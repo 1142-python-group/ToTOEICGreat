@@ -38,8 +38,8 @@ grammar_focus = [
 ]
 
 API_KEYS = [
-    "AIzaSyDAcOkm01g3uJSpoDZGsEFtlvazUCWeN0Y",
-    "AIzaSyBwvdGKuvy3AvzZq1Iqg4Jc19rUTt6GABg"
+    "填入你的api key1",
+    "填入你的api key2"
 ]
 
 # ⚠️ 你確認過的最正確輸出欄位順序
