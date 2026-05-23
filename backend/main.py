@@ -61,24 +61,47 @@ def classify_skill_tag(tag_raw):
     elif isinstance(tag_raw, str):
         try:
             parsed = json.loads(tag_raw)
-            tag = parsed[0] if isinstance(parsed, list) else tag_raw
+            tag = parsed[0] if isinstance(parsed, list) else parsed
         except:
             tag = tag_raw
     else:
         tag = str(tag_raw)
 
+    tag = str(tag).strip().strip('"')
+
+    # 1. 文法概念（前綴判斷，最高優先）
     if tag.startswith("文法"):
-        return "文法"
-    elif tag.startswith("單字"):
-        return "單字"
-    elif tag.startswith("閱讀") or "細節理解" in tag or "原因理解" in tag or "主旨" in tag or "推論" in tag or "對話主旨" in tag:
+        return "文法概念"
+    
+    # 單字運用
+    if tag.startswith("單字") or tag.startswith("片語") or tag.startswith("語氣"):
+        return "單字運用"
+
+    # 3. 聽力理解
+    listening_keywords = (
+        "WH問句", "Yes/No", "附加問句", "否定疑問句", "選擇疑問句",
+        "間接疑問句", "陳述句回應", "請求句回應", "建議/邀請句回應",
+        "對話地點", "對話主旨", "時間/地點/數字資訊",
+        "說話者身分", "說話者意圖", "說話目的",
+        "態度/語氣", "同意/拒絕/變更",
+        "下一步行動", "建議/請求/安排",
+    )
+    if any(kw in tag for kw in listening_keywords):
+        return "聽力理解"
+
+    # 4. 閱讀理解
+    if (
+        tag.startswith("閱讀")
+        or "細節理解" in tag
+        or "原因理解" in tag
+        or "主旨理解" in tag
+        or "主旨/目的" in tag
+        or "推論" in tag
+    ):
         return "閱讀理解"
-    elif "WH問句" in tag or "Yes/No" in tag or "附加問句" in tag or "否定疑問句" in tag or "選擇疑問句" in tag or "間接疑問句" in tag or "陳述句回應" in tag:
-        return "聽力"
-    elif "建議" in tag or "請求" in tag or "說話者意圖" in tag or "說話目的" in tag or "下一步行動" in tag or "推論(Inference)" in tag:
-        return "推論能力"
-    else:
-        return "商業用語"
+
+    # 5. 其他能力（片語、轉承詞等）
+    return "其他能力"
 
 # ════════════════════════════════════════════════
 # 讀取題庫（分批讀取資料庫資料）
@@ -467,7 +490,7 @@ def get_user_stats(user_id: str):
         if r["is_correct"]:
             tag_stats[category]["correct"] += 1
 
-    categories = ["文法", "單字", "閱讀理解", "聽力", "推論能力", "商業用語"]
+    categories = ["文法概念", "單字運用", "聽力理解", "閱讀理解"]
     radar_data = [
         {
             "label": cat,
