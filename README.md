@@ -65,8 +65,8 @@ toToeicGreat/
 │       ├── build_vectordb.py # 建置 ChromaDB
 │       ├── ToeicLLM.py       # AI 命題系統 (RAG)
 │       ├── upload_articles.py # 閱讀文章上傳
-		├── delete_supabase.py # AI 自動刪除錯題
-		└── llm_judge.py  # AI 審題系統
+│ 		├── delete_supabase.py # AI 自動刪除錯題
+│ 		└── llm_judge.py  # AI 審題系統
 ├── frontend/
 │   ├── index.html          # SPA 入口頁面
 │   ├── app.js              # Vue 邏輯與介面管理
