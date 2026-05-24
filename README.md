@@ -88,7 +88,7 @@ toToeicGreat/
 
 ---
 
-## ⚙️ 環境建置與使用方式
+## ⚙️ 本地端環境建置與使用方式
 
 ### 1. 環境設定
 在 `backend/` 目錄下建立 `.env` 檔案：
@@ -117,6 +117,13 @@ GEMINI_API_KEY=your_google_gemini_api_key
     cd frontend
     python -m http.server 3000
     ```
+
+---
+
+## ⚙️ 雲端服務使用方式
+
+點擊[多多益善網頁服務](https://totoeicgreat-frontend.onrender.com/)進入部署於Render平台服務的網頁。
+如遇伺服器冷啟動需等待1~3分鐘。
 
 ---
 *本專案為「程式設計-Python」課程期末專題。*
