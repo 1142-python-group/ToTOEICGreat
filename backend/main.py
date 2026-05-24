@@ -514,6 +514,10 @@ def get_user_stats(user_id: str):
 
 @app.post("/api/quiz/generate-practice")
 def generate_practice(payload: PracticeRequest):
+    def normalize_tag(t):
+        if isinstance(t, list):
+            return t[0].strip().strip('"').strip("'") if t else ""
+        return str(t).strip().strip('"').strip("'")
     question_id = payload.question_id
     if not questions_data:
         raise HTTPException(503, detail="題庫未載入")
@@ -521,7 +525,11 @@ def generate_practice(payload: PracticeRequest):
     original = [q for q in all_data if str(q.get("question_id")) == question_id]
     if not original:
         raise HTTPException(404, detail=f"找不到題目 {question_id}")
-    tag = original[0].get("skill_tag")
+    raw_tag = original[0].get("skill_tag", "")
+    if isinstance(raw_tag, list):
+        tag = raw_tag[0].strip().strip('"') if raw_tag else ""
+    else:
+        tag = str(raw_tag).strip().strip('"').strip("'")
     part = original[0].get("part")
     current_group = original[0].get("group_id")
 
@@ -539,7 +547,12 @@ def generate_practice(payload: PracticeRequest):
         # 取第一題作為代表（音檔相同）
         row = group_questions[0]
     else:
-        same_tag = [q for q in all_data if q.get("skill_tag") == tag and q.get("part") == part and str(q.get("question_id")) != question_id]
+        same_tag = [
+        q for q in all_data
+        if normalize_tag(q.get("skill_tag")) == tag
+        and q.get("part") == part
+        and str(q.get("question_id")) != question_id
+        ]
         if not same_tag:
             raise HTTPException(404, detail="找不到相同考點的其他題目")
         row = random.choice(same_tag)

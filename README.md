@@ -39,6 +39,8 @@
 ### 3. 資料處理流水線 (Pre-processing)
 *   **聽力生成**：`generate_audio.py` 透過 Edge-TTS 批量轉換 CSV 腳本為 MP3。
 *   **題目研發**：`ToeicLLM.py` 結合 ChromaDB 向量檢索，自動產出具備多益難度的 Part 5/6/7 試題。
+*	**AI 交叉審查 (LLM-as-a-Judge)**：`llm_judge.py` 引入低溫度 (Temperature=0.0) 的裁判模型，對生成的題目進行邏輯與文法盲測，自動抓出「雙胞胎選項」或「幻覺錯題」。
+*	**智慧清理機制**：`delete_bad_questions.py` 針對爭議題，透過腳本連動 `group_id`，一鍵從 Supabase 徹底清除無效題組。
 
 ---
 
@@ -62,7 +64,9 @@ toToeicGreat/
 │   └── reading_questions/   # 閱讀前處理
 │       ├── build_vectordb.py # 建置 ChromaDB
 │       ├── ToeicLLM.py       # AI 命題系統 (RAG)
-│       └── upload_articles.py # 閱讀文章上傳
+│       ├── upload_articles.py # 閱讀文章上傳
+│ 		├── delete_supabase.py # AI 自動刪除錯題
+│ 		└── llm_judge.py  # AI 審題系統
 ├── frontend/
 │   ├── index.html          # SPA 入口頁面
 │   ├── app.js              # Vue 邏輯與介面管理
@@ -84,7 +88,7 @@ toToeicGreat/
 
 ---
 
-## ⚙️ 環境建置與使用方式
+## ⚙️ 本地端環境建置與使用方式
 
 ### 1. 環境設定
 在 `backend/` 目錄下建立 `.env` 檔案：
@@ -113,6 +117,13 @@ GEMINI_API_KEY=your_google_gemini_api_key
     cd frontend
     python -m http.server 3000
     ```
+
+---
+
+## ⚙️ 雲端服務使用方式
+
+點擊[多多益善網頁服務](https://totoeicgreat-frontend.onrender.com/)進入部署於Render平台服務的網頁。
+如遇伺服器冷啟動需等待1~3分鐘。
 
 ---
 *本專案為「程式設計-Python」課程期末專題。*
