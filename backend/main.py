@@ -11,6 +11,9 @@ from database import supabase, SUPABASE_URL
 from models import Question, QuizSession, AnswerSubmit, QuestionResult, ExamResult, UserStats
 from pydantic import BaseModel
 from collections import defaultdict
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.inmemory import InMemoryBackend
+from fastapi_cache.decorator import cache
 
 from routers.auth import router as auth_router, verify_token
 from routers.friends import router as friendship_router
@@ -20,6 +23,10 @@ from routers.history_practice import router as history_router
 
 
 app = FastAPI(title="多多益善 API", version="1.0.0")
+
+@app.on_event("startup")
+async def startup():
+    FastAPICache.init(InMemoryBackend())
 
 origins = [
     "https://totoeicgreat-frontend.onrender.com",
