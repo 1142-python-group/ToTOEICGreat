@@ -1316,7 +1316,7 @@ const LeaderboardView = {
         <h2 class="view-title" style="margin-bottom: 20px;">排行榜</h2>
         
         <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #ddd; padding-bottom: 10px;">
-          <button @click="tab = 'score'" :class="tab === 'score' ? 'btn-primary' : 'btn-outline'" style="padding: 8px 16px;">正確率排行</button>
+          <button @click="tab = 'score'" :class="tab === 'score' ? 'btn-primary' : 'btn-outline'" style="padding: 8px 16px;">最高正確率排行</button>
           <button @click="tab = 'diligence'" :class="tab === 'diligence' ? 'btn-primary' : 'btn-outline'" style="padding: 8px 16px;">勤勉度排行</button>
           
           <select v-model="timeframe" @change="fetchData" style="margin-left: auto; padding: 8px; border-radius: 8px; border: 1px solid #ddd;">
@@ -1333,7 +1333,7 @@ const LeaderboardView = {
             <div style="display: grid; grid-template-columns: 60px 1fr 100px; padding: 15px 20px; background: #f8fafc; font-weight: bold; border-bottom: 1px solid #eee;">
               <div>名次</div>
               <div>使用者</div>
-              <div style="text-align: right;">{{ tab === 'score' ? '正確率' : '刷題數' }}</div>
+              <div style="text-align: right;">{{ tab === 'score' ? '最高正確率' : '刷題數' }}</div>
             </div>
             
             <div v-if="list.length === 0" style="padding: 30px; text-align: center; color: #888;">
