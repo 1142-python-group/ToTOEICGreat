@@ -23,7 +23,7 @@ class LeaderboardDiligenceEntry(BaseModel):
 @router.get("/scores", response_model=List[LeaderboardScoreEntry])
 async def get_score_leaderboard(
     response: Response,
-    timeframe: str = Query("all_time", pattern="^(all_time|this_month)$"),
+    timeframe: str = Query("all_time", pattern="^(all_time|this_month|this_week)$"),
     user_id: str = Depends(verify_token)
 ):
     """

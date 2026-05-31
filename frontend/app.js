@@ -1370,8 +1370,7 @@ const LeaderboardView = {
       loading.value = true;
       try {
         if (tab.value === 'score') {
-          const tf = timeframe.value === 'this_week' ? 'this_month' : timeframe.value;
-          const data = await api.getScoreLeaderboard(tf);
+          const data = await api.getScoreLeaderboard(timeframe.value);
           list.value = data;
         } else {
           const data = await api.getDiligenceLeaderboard(timeframe.value);
