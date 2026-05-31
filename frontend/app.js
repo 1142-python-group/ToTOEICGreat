@@ -549,7 +549,8 @@ const ProfileView = {
 const QuizView = {
   emits: ["submit"],
   props: {
-    session: { type: Object, required: true }
+    session: { type: Object, required: true },
+    loading: { type: Boolean, default: false }
   },
   setup(props, { emit }) {
     const currentIndex = ref(0)
@@ -618,6 +619,7 @@ const QuizView = {
     function jumpToQ(i) { recordTimeAndJump(i) }
 
     function doSubmit() {
+      if (props.loading) return
       clearInterval(timerInterval)
       localStorage.removeItem("exam_backup")
       emit("submit", {
@@ -694,7 +696,9 @@ const QuizView = {
           <div class="quiz-controls">
             <button class="btn-nav" @click="prevQ" :disabled="currentIndex === 0">← 上一題</button>
             <button v-if="!isLastQ" class="btn-nav" @click="nextQ">下一題 →</button>
-            <button v-else class="btn-submit" @click="doSubmit">交卷</button>
+            <button v-else class="btn-submit" @click="doSubmit" :disabled="loading">
+              {{ loading ? '交卷中...' : '交卷' }}
+            </button>
           </div>
         </div>
 
@@ -1520,6 +1524,7 @@ const App = {
     }
 
     async function handleSubmit(payload) {
+      state.loading = true
       try {
         state.examResult = await api.submitQuiz(
           payload.session_id,
@@ -1529,6 +1534,8 @@ const App = {
         showView("result")
       } catch (e) {
         alert("交卷失敗：" + e.message)
+      } finally {
+        state.loading = false
       }
     }
 
@@ -1596,6 +1603,7 @@ const App = {
     <quiz-view
       v-if="currentView === 'quiz' && state.quizSession"
       :session="state.quizSession"
+      :loading="state.loading"
       @submit="handleSubmit"
     />
     <result-view

@@ -6,3 +6,4 @@ pandas
 httpx
 supabase
 google-genai
+fastapi-cache2==0.2.2

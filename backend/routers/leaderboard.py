@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from routers.auth import verify_token
 from database import supabase
 from typing import List, Optional
@@ -22,6 +22,7 @@ class LeaderboardDiligenceEntry(BaseModel):
 
 @router.get("/scores", response_model=List[LeaderboardScoreEntry])
 async def get_score_leaderboard(
+    response: Response,
     timeframe: str = Query("all_time", pattern="^(all_time|this_month)$"),
     user_id: str = Depends(verify_token)
 ):
@@ -29,6 +30,7 @@ async def get_score_leaderboard(
     獲取最高分排行榜 (模考)
     """
     try:
+        response.headers["Cache-Control"] = "public, max-age=30"
         # 呼叫 RPC 函數
         res = supabase.rpc("get_score_leaderboard", {
             "target_user_id": user_id,
@@ -41,6 +43,7 @@ async def get_score_leaderboard(
 
 @router.get("/diligence", response_model=List[LeaderboardDiligenceEntry])
 async def get_diligence_leaderboard(
+    response: Response,
     timeframe: str = Query("this_week", pattern="^(this_week|this_month|all_time)$"),
     user_id: str = Depends(verify_token)
 ):
@@ -48,6 +51,7 @@ async def get_diligence_leaderboard(
     獲取勤勉排行榜 (刷題數)
     """
     try:
+        response.headers["Cache-Control"] = "public, max-age=30"
         # 呼叫 RPC 函數
         res = supabase.rpc("get_diligence_leaderboard", {
             "target_user_id": user_id,

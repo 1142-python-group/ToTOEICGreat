@@ -442,6 +442,7 @@ def submit_quiz(payload: AnswerSubmit, user_id: str = Depends(verify_token)):
 # ════════════════════════════════════════════════
 
 @app.get("/api/user/{user_id}/stats", response_model=UserStats)
+@cache(expire=30)
 def get_user_stats(user_id: str):
     # username
     user_res = supabase.table("users").select("username").eq("id", user_id).single().execute()
