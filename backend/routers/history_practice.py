@@ -107,19 +107,21 @@ async def generate_history_practice(user_id: str = Depends(verify_token)):
     # 處理 Part 5
     for q in ai_data.get("part5", []):
         qid = get_short_id("SQ")
+        skill_tag = q.get("skill_tag") or "未分類"
         
         # 準備存入 DB
         db_questions_to_insert.append({
             "question_id": qid, "group_id": None, "part": 5,
             "question_text": q["question_text"], "option_a": q["option_a"], "option_b": q["option_b"], 
             "option_c": q["option_c"], "option_d": q["option_d"], "correct_answer": q["correct_answer"], 
-            "explanation": q["explanation"], "translation": q["translation"], "vocabulary": q["vocabulary"], "skill_tag": q.get("skill_tag")
+            "explanation": q["explanation"], "translation": q["translation"], "vocabulary": q.get("vocabulary") or "", "skill_tag": skill_tag
         })
         
         # 準備給前端 (使用隊友定義的 model)
         frontend_questions.append(Question(
-            id=qid, tag=q.get("skill_tag"), text=q["question_text"],
-            options=[q["option_a"], q["option_b"], q["option_c"], q["option_d"]]
+            id=qid, tag=skill_tag, text=q["question_text"],
+            options=[q["option_a"], q["option_b"], q["option_c"], q["option_d"]],
+            part=5
         ))
 
     # 處理 Part 7
@@ -129,24 +131,28 @@ async def generate_history_practice(user_id: str = Depends(verify_token)):
     # 將文章寫入 article 表
     supabase.table("article").insert({
         "group_id": group_id, "article_type": p7.get("article_type"), 
-        "article_text": p7.get("article_text"), "article_translation": p7.get("article_translation"), "vocabulary": p7.get("vocabulary")
+        "article_text": p7.get("article_text"), "article_translation": p7.get("article_translation"), "vocabulary": p7.get("vocabulary") or ""
     }).execute()
 
     for q in p7.get("questions", []):
         qid = get_short_id("SQ")
+        skill_tag = q.get("skill_tag") or "閱讀理解"
         
         db_questions_to_insert.append({
             "question_id": qid, "group_id": group_id, "part": 7,
             "question_text": q["question_text"], "option_a": q["option_a"], "option_b": q["option_b"], 
             "option_c": q["option_c"], "option_d": q["option_d"], "correct_answer": q["correct_answer"], 
-            "explanation": q["explanation"], "translation": q["translation"], "vocabulary": "", "skill_tag": q.get("skill_tag")
+            "explanation": q["explanation"], "translation": q["translation"], "vocabulary": "", "skill_tag": skill_tag
         })
 
         frontend_questions.append(Question(
-            id=qid, tag=q.get("skill_tag"), text=q["question_text"],
+            id=qid, tag=skill_tag, text=q["question_text"],
             options=[q["option_a"], q["option_b"], q["option_c"], q["option_d"]],
             article_text=p7.get("article_text"), # 綁定文章內容給前端渲染
-            article_type=p7.get("article_type")
+            article_type=p7.get("article_type"),
+            article_translation=p7.get("article_translation"),
+            group_id=group_id,
+            part=7
         ))
 
     # 整批寫入 questions 表

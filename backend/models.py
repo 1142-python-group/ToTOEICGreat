@@ -4,7 +4,7 @@ from typing import Optional
 # ── 題目相關 ──────────────────────────────────
 class Question(BaseModel):
     id: str
-    tag: str                    # 例如：「單字 — 動詞」
+    tag: str = ""                    # 例如：「單字 — 動詞」
     text: str                   # 題目文字
     options: list[str]          # ["A. ...", "B. ...", "C. ...", "D. ..."]
     # Part 7 閱讀題欄位
@@ -31,7 +31,7 @@ class AnswerSubmit(BaseModel):
 # ── 成績 / 解析 ───────────────────────────────
 class QuestionResult(BaseModel):
     question_id: str
-    tag: str
+    tag: str = ""
     question_text: str
     options: list[str]
     correct_index: int          # 正確答案的 index
